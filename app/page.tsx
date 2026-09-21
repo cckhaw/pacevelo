@@ -28,12 +28,9 @@ export default function Home() {
               Set up your company <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/login">Log in</Link>
-          </Button>
         </div>
         <p className="mt-6 text-sm text-muted-foreground">
-          Joining a challenge? Use the invite link your HR admin sent you.
+          Joining a challenge? Use the invite link your company admin sent you
         </p>
       </div>
     </div>

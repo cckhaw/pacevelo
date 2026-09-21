@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { eq, count } from "drizzle-orm";
+import { and, eq, gte, count } from "drizzle-orm";
 import { Users, Trophy, Plus } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { InviteLinkCard } from "@/components/admin/invite-link-card";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { companies, profiles, challenges } from "@/db/schema";
@@ -18,13 +17,14 @@ export default async function AdminDashboardPage() {
   }
   const companyId = profile.companyId;
 
-  const [company, [{ value: employeeCount }], [{ value: challengeCount }]] = await Promise.all([
+  const [company, [{ value: employeeCount }], [{ value: activeChallengeCount }]] = await Promise.all([
     db.query.companies.findFirst({ where: eq(companies.id, companyId) }),
     db.select({ value: count() }).from(profiles).where(eq(profiles.companyId, companyId)),
-    db.select({ value: count() }).from(challenges).where(eq(challenges.companyId, companyId)),
+    db
+      .select({ value: count() })
+      .from(challenges)
+      .where(and(eq(challenges.companyId, companyId), gte(challenges.endDate, new Date()))),
   ]);
-
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/join/${company?.slug}`;
 
   return (
     <div className="min-h-screen bg-secondary">
@@ -63,15 +63,13 @@ export default async function AdminDashboardPage() {
               <Trophy className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold">{challengeCount ?? 0}</p>
+              <p className="text-2xl font-semibold">{activeChallengeCount ?? 0}</p>
               <Link href="/admin/challenges" className="text-xs text-primary underline-offset-4 hover:underline">
                 View all
               </Link>
             </CardContent>
           </Card>
         </div>
-
-        <InviteLinkCard inviteUrl={inviteUrl} />
 
         {!company?.slackWebhookUrl ? (
           <Card>
