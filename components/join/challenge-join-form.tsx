@@ -1,0 +1,156 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { requestChallengeOtp, verifyChallengeOtpAndJoin } from "@/app/join/challenge/[challengeId]/actions";
+
+export function ChallengeJoinForm({ challengeId, emailDomain }: { challengeId: string; emailDomain: string | null }) {
+  const [step, setStep] = useState<"email" | "verify">("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [department, setDepartment] = useState("");
+  const [isExistingAccount, setIsExistingAccount] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleRequestOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const result = await requestChallengeOtp(challengeId, email);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setIsExistingAccount(Boolean(result.existingAccount));
+      setStep("verify");
+    });
+  }
+
+  function handleResend() {
+    setError(null);
+    startTransition(async () => {
+      const result = await requestChallengeOtp(challengeId, email);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice("A new code is on its way.");
+    });
+  }
+
+  function handleVerifyAndJoin(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const result = await verifyChallengeOtpAndJoin(challengeId, email, code, password, fullName, department);
+      // A successful join redirects server-side and never returns here.
+      if (result?.error) {
+        setError(result.error);
+      }
+    });
+  }
+
+  if (step === "email") {
+    return (
+      <form onSubmit={handleRequestOtp} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Work email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder={emailDomain ? `you@${emailDomain}` : "you@company.com"}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {emailDomain ? (
+            <p className="text-xs text-muted-foreground">Must be an @{emailDomain} address.</p>
+          ) : null}
+        </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+          {isPending ? "Sending code…" : "Send verification code"}
+        </Button>
+      </form>
+    );
+  }
+
+  return (
+    <form onSubmit={handleVerifyAndJoin} className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>.
+      </p>
+
+      <div className="space-y-2">
+        <Label htmlFor="code">Verification code</Label>
+        <Input
+          id="code"
+          inputMode="numeric"
+          pattern="[0-9]{6}"
+          maxLength={6}
+          required
+          autoComplete="one-time-code"
+          placeholder="123456"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+        />
+      </div>
+
+      {!isExistingAccount ? (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Your name</Label>
+            <Input
+              id="fullName"
+              required
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="department">Department (optional)</Label>
+            <Input
+              id="department"
+              placeholder="Engineering, Sales, HR…"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+            />
+          </div>
+        </>
+      ) : null}
+
+      <div className="space-y-2">
+        <Label htmlFor="password">{isExistingAccount ? "Password" : "Create a password"}</Label>
+        <Input
+          id="password"
+          type="password"
+          required
+          minLength={8}
+          autoComplete={isExistingAccount ? "current-password" : "new-password"}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </div>
+
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {notice ? <p className="text-sm text-primary">{notice}</p> : null}
+
+      <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+        {isPending ? "Joining…" : "Verify & join challenge"}
+      </Button>
+      <Button type="button" variant="ghost" size="sm" className="w-full" onClick={handleResend} disabled={isPending}>
+        Resend code
+      </Button>
+    </form>
+  );
+}

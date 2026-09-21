@@ -1,15 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { Trophy, Users } from "lucide-react";
+import { RefreshCw, Trophy, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import type { LeaderboardData } from "@/lib/leaderboard-data";
 import { METRIC_TYPE_LABELS } from "@/lib/validations";
 import type { ActivityType } from "@/db/schema";
 
-const POLL_INTERVAL_MS = 20_000;
+// Strava's webhook typically lands a new activity within a few seconds, so
+// polling this often is what makes the board feel live without standing up
+// push infrastructure (websockets/SSE) for an MVP leaderboard.
+const POLL_INTERVAL_MS = 8_000;
+
+function timeAgoLabel(secondsAgo: number) {
+  if (secondsAgo < 5) return "just now";
+  if (secondsAgo < 60) return `${secondsAgo}s ago`;
+  const minutesAgo = Math.round(secondsAgo / 60);
+  return `${minutesAgo}m ago`;
+}
 
 function formatValue(value: number, metricType: keyof typeof METRIC_TYPE_LABELS) {
   const rounded = metricType === "active_time_mins" ? Math.round(value) : Math.round(value * 10) / 10;
@@ -44,18 +56,28 @@ async function fetchLeaderboard(
 export function LeaderboardView({ slug, initialData }: { slug: string; initialData: LeaderboardData }) {
   const [challengeId, setChallengeId] = useState<string | undefined>(initialData.activeChallenge?.id);
   const [activityType, setActivityType] = useState<ActivityType | "all">("all");
+  const [now, setNow] = useState(() => Date.now());
 
   const isDefaultView = challengeId === initialData.activeChallenge?.id && activityType === "all";
 
-  const { data } = useQuery({
+  const { data, dataUpdatedAt, isFetching, refetch } = useQuery({
     queryKey: ["leaderboard", slug, challengeId, activityType],
     queryFn: () => fetchLeaderboard(slug, challengeId, activityType),
     initialData: isDefaultView ? initialData : undefined,
+    initialDataUpdatedAt: isDefaultView ? () => Date.now() : undefined,
     placeholderData: keepPreviousData,
     refetchInterval: POLL_INTERVAL_MS,
+    refetchOnWindowFocus: true,
   });
 
+  // Ticks the "updated Xs ago" label without waiting for the next poll.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const view = data ?? initialData;
+  const secondsAgo = Math.max(0, Math.round((now - dataUpdatedAt) / 1000));
 
   if (!view.activeChallenge) {
     return (
@@ -78,19 +100,41 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
           <p className="text-sm text-muted-foreground">Ranked by {METRIC_TYPE_LABELS[metricType].toLowerCase()}</p>
         </div>
 
-        {view.challenges.length > 1 ? (
-          <select
-            value={challengeId}
-            onChange={(e) => setChallengeId(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+        <div className="flex items-center gap-3">
+          {view.challenges.length > 1 ? (
+            <select
+              value={challengeId}
+              onChange={(e) => setChallengeId(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              {view.challenges.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          ) : null}
+
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            </span>
+            Live · updated {timeAgoLabel(secondsAgo)}
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            aria-label="Refresh leaderboard now"
+            title="Just synced a workout? Refresh now."
           >
-            {view.challenges.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        ) : null}
+            <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activityType} onValueChange={(v) => setActivityType(v as ActivityType | "all")}>

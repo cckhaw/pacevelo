@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LoginForm } from "@/components/login-form";
 
 const ERROR_MESSAGES: Record<string, string> = {
   strava_access_denied: "You cancelled the Strava connection. You can try again anytime.",
@@ -17,12 +17,10 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; company?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { error, company } = await searchParams;
+  const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? "Something went wrong. Please try again." : null;
-
-  const stravaHref = company ? `/api/auth/strava?company=${encodeURIComponent(company)}` : "/api/auth/strava";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
@@ -31,8 +29,8 @@ export default async function LoginPage({
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Activity className="h-6 w-6" />
           </div>
-          <CardTitle className="text-xl">Sign in to PaceVelo</CardTitle>
-          <CardDescription>Connect your Strava account to join your company&apos;s challenge.</CardDescription>
+          <CardTitle className="text-xl">Log in to PaceVelo</CardTitle>
+          <CardDescription>View your challenges and leaderboards.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {errorMessage ? (
@@ -41,10 +39,11 @@ export default async function LoginPage({
             </p>
           ) : null}
 
-          <Button asChild size="lg" className="w-full bg-[#FC4C02] text-white hover:bg-[#e04502]">
-            <a href={stravaHref}>Continue with Strava</a>
-          </Button>
+          <LoginForm />
 
+          <p className="text-center text-xs text-muted-foreground">
+            New here? You&apos;ll need a challenge invite link from your HR admin to sign up.
+          </p>
           <p className="text-center text-xs text-muted-foreground">
             Are you an HR admin?{" "}
             <Link href="/admin/login" className="font-medium text-primary underline-offset-4 hover:underline">

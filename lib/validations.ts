@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+export const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address");
+export const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
+
+// Accepts "acme.com", "@acme.com", or someone pasting "https://acme.com/".
+export const emailDomainSchema = z
+  .union([
+    z
+      .string()
+      .trim()
+      .toLowerCase()
+      .transform((v) => v.replace(/^@/, "").replace(/^https?:\/\//, "").replace(/\/.*$/, ""))
+      .refine((v) => /^[a-z0-9.-]+\.[a-z]{2,}$/.test(v), "Enter a domain like acme.com"),
+    z.literal(""),
+  ])
+  .optional()
+  .transform((v) => (v ? v : null));
+
 export const companySchema = z.object({
   name: z.string().trim().min(2, "Company name is too short").max(120),
   slackWebhookUrl: z
@@ -25,6 +42,7 @@ export const challengeSchema = z
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().min(1, "End date is required"),
     targetDepartments: z.array(z.string().trim().min(1)).optional(),
+    emailDomain: emailDomainSchema,
   })
   .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
     message: "End date must be after the start date",
