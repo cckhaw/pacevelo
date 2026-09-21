@@ -6,14 +6,10 @@ import { createSession } from "@/lib/session";
 import { db } from "@/db";
 import { companies, profiles } from "@/db/schema";
 
-const OAUTH_NONCE_COOKIE = "strava_oauth_nonce";
-
 function errorRedirect(appUrl: string, message: string) {
   const url = new URL("/login", appUrl);
   url.searchParams.set("error", message);
-  const response = NextResponse.redirect(url);
-  response.cookies.delete(OAUTH_NONCE_COOKIE);
-  return response;
+  return NextResponse.redirect(url);
 }
 
 export async function GET(request: NextRequest) {
@@ -34,9 +30,8 @@ export async function GET(request: NextRequest) {
     return errorRedirect(appUrl, "missing_oauth_params");
   }
 
-  const state = decodeStravaState(rawState);
-  const expectedNonce = request.cookies.get(OAUTH_NONCE_COOKIE)?.value;
-  if (!state || !expectedNonce || state.nonce !== expectedNonce) {
+  const state = await decodeStravaState(rawState);
+  if (!state) {
     return errorRedirect(appUrl, "invalid_oauth_state");
   }
 
@@ -143,7 +138,5 @@ export async function GET(request: NextRequest) {
   if (isNewUser) {
     destination.searchParams.set("welcome", "1");
   }
-  const response = NextResponse.redirect(destination);
-  response.cookies.delete(OAUTH_NONCE_COOKIE);
-  return response;
+  return NextResponse.redirect(destination);
 }

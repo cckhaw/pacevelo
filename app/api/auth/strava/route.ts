@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { randomUUID } from "crypto";
 import { STRAVA_AUTHORIZE_URL } from "@/lib/strava/client";
 import { encodeStravaState } from "@/lib/strava/state";
 import { getSession } from "@/lib/session";
-
-const OAUTH_NONCE_COOKIE = "strava_oauth_nonce";
 
 /**
  * Step 1 of the Strava OAuth handshake: redirect the browser to Strava's
@@ -31,9 +28,7 @@ export async function GET(request: NextRequest) {
   // brand new user in the callback.
   const session = await getSession();
 
-  const nonce = randomUUID();
-  const state = encodeStravaState({
-    nonce,
+  const state = await encodeStravaState({
     companySlug,
     redirectTo,
     existingUserId: session?.userId,
@@ -48,13 +43,5 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("scope", "read,activity:read_all");
   authorizeUrl.searchParams.set("state", state);
 
-  const response = NextResponse.redirect(authorizeUrl);
-  response.cookies.set(OAUTH_NONCE_COOKIE, nonce, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 600,
-    path: "/",
-  });
-  return response;
+  return NextResponse.redirect(authorizeUrl);
 }
