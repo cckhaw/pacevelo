@@ -1,0 +1,63 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { randomUUID } from "crypto";
+import { STRAVA_AUTHORIZE_URL } from "@/lib/strava/client";
+import { encodeStravaState } from "@/lib/strava/state";
+import { createClient } from "@/lib/supabase/server";
+
+const OAUTH_NONCE_COOKIE = "strava_oauth_nonce";
+
+/**
+ * Step 1 of the Strava OAuth handshake: redirect the browser to Strava's
+ * authorize screen. Accepts optional `company` (invite slug) and
+ * `redirect_to` query params so the callback can finish onboarding.
+ */
+export async function GET(request: NextRequest) {
+  const clientId = process.env.STRAVA_CLIENT_ID;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!clientId || !appUrl) {
+    return NextResponse.json(
+      { error: "Strava OAuth is not configured on this server." },
+      { status: 500 },
+    );
+  }
+
+  const searchParams = request.nextUrl.searchParams;
+  const companySlug = searchParams.get("company") ?? undefined;
+  const redirectTo = searchParams.get("redirect_to") ?? undefined;
+
+  // If the browser already holds a Supabase session (e.g. an existing
+  // employee reconnecting Strava, or an HR admin linking their own
+  // account), attach the new tokens to that profile instead of
+  // provisioning a brand new user in the callback.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const nonce = randomUUID();
+  const state = encodeStravaState({
+    nonce,
+    companySlug,
+    redirectTo,
+    existingUserId: user?.id,
+  });
+
+  const redirectUri = `${appUrl}/api/auth/strava/callback`;
+  const authorizeUrl = new URL(STRAVA_AUTHORIZE_URL);
+  authorizeUrl.searchParams.set("client_id", clientId);
+  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("approval_prompt", "auto");
+  authorizeUrl.searchParams.set("scope", "read,activity:read_all");
+  authorizeUrl.searchParams.set("state", state);
+
+  const response = NextResponse.redirect(authorizeUrl);
+  response.cookies.set(OAUTH_NONCE_COOKIE, nonce, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 600,
+    path: "/",
+  });
+  return response;
+}
