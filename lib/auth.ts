@@ -1,31 +1,36 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { profiles } from "@/db/schema";
+import { getSession } from "@/lib/session";
 
 /**
- * Guards an /admin page: requires a signed-in Supabase user whose profile
- * has role = 'admin'. Redirects to /admin/login otherwise.
+ * Guards an /admin page: requires a signed-in session whose profile has
+ * role = 'admin'. Redirects to /admin/login otherwise.
  */
 export async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await getSession();
+  if (!session) {
     redirect("/admin/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, full_name, role, company_id")
-    .eq("id", user.id)
-    .single();
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.id, session.userId),
+  });
 
   if (!profile || profile.role !== "admin") {
     redirect("/admin/login");
   }
 
-  return { supabase, user, profile };
+  return { user: { id: profile.id }, profile };
+}
+
+/** Returns the signed-in employee's profile, or null if not signed in. */
+export async function getCurrentProfile() {
+  const session = await getSession();
+  if (!session) return null;
+
+  return db.query.profiles.findFirst({ where: eq(profiles.id, session.userId) }) ?? null;
 }

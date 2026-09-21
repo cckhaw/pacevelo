@@ -1,41 +1,39 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { eq, count } from "drizzle-orm";
 import { Users, Trophy, Plus } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InviteLinkCard } from "@/components/admin/invite-link-card";
 import { requireAdmin } from "@/lib/auth";
+import { db } from "@/db";
+import { companies, profiles, challenges } from "@/db/schema";
 
 export default async function AdminDashboardPage() {
-  const { supabase, profile } = await requireAdmin();
+  const { profile } = await requireAdmin();
 
-  if (!profile.company_id) {
+  if (!profile.companyId) {
     redirect("/admin/company");
   }
+  const companyId = profile.companyId;
 
-  const [{ data: company }, { count: employeeCount }, { count: challengeCount }] = await Promise.all([
-    supabase.from("companies").select("*").eq("id", profile.company_id).single(),
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", profile.company_id),
-    supabase
-      .from("challenges")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", profile.company_id),
+  const [company, [{ value: employeeCount }], [{ value: challengeCount }]] = await Promise.all([
+    db.query.companies.findFirst({ where: eq(companies.id, companyId) }),
+    db.select({ value: count() }).from(profiles).where(eq(profiles.companyId, companyId)),
+    db.select({ value: count() }).from(challenges).where(eq(challenges.companyId, companyId)),
   ]);
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/join/${company?.slug}`;
 
   return (
     <div className="min-h-screen bg-secondary">
-      <AdminNav fullName={profile.full_name} hasCompany />
+      <AdminNav fullName={profile.fullName} hasCompany />
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">{company?.name}</h1>
-            <p className="text-sm text-muted-foreground">Welcome back, {profile.full_name.split(" ")[0]}.</p>
+            <p className="text-sm text-muted-foreground">Welcome back, {profile.fullName.split(" ")[0]}.</p>
           </div>
           <Button asChild>
             <Link href="/admin/challenges/new">
@@ -70,7 +68,7 @@ export default async function AdminDashboardPage() {
 
         <InviteLinkCard inviteUrl={inviteUrl} />
 
-        {!company?.slack_webhook_url ? (
+        {!company?.slackWebhookUrl ? (
           <Card>
             <CardHeader>
               <CardDescription>

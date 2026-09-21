@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/db";
+import { companies } from "@/db/schema";
 
 export default async function JoinCompanyPage({
   params,
@@ -10,13 +12,11 @@ export default async function JoinCompanyPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id, name, slug, logo_url")
-    .eq("slug", slug)
-    .maybeSingle();
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.slug, slug),
+    columns: { id: true, name: true, slug: true, logoUrl: true },
+  });
 
   if (!company) {
     notFound();
@@ -30,10 +30,10 @@ export default async function JoinCompanyPage({
     <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          {company.logo_url ? (
+          {company.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- logos are arbitrary user-uploaded URLs
             <img
-              src={company.logo_url}
+              src={company.logoUrl}
               alt={company.name}
               width={56}
               height={56}

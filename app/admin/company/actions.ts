@@ -1,6 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { eq, ne, and } from "drizzle-orm";
+import { put } from "@vercel/blob";
+import { db } from "@/db";
+import { companies, profiles } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { companySchema } from "@/lib/validations";
 import { slugify } from "@/lib/slug";
@@ -12,17 +16,17 @@ export interface CompanyActionState {
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
-async function uniqueSlug(
-  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
-  base: string,
-  excludeCompanyId?: string,
-) {
+async function uniqueSlug(base: string, excludeCompanyId?: string) {
   const candidate = slugify(base);
   for (let attempt = 0; attempt < 6; attempt++) {
     const trySlug = attempt === 0 ? candidate : `${candidate}-${attempt + 1}`;
-    const query = supabase.from("companies").select("id").eq("slug", trySlug);
-    const { data } = excludeCompanyId ? await query.neq("id", excludeCompanyId) : await query;
-    if (!data || data.length === 0) return trySlug;
+    const existing = await db.query.companies.findFirst({
+      where: excludeCompanyId
+        ? and(eq(companies.slug, trySlug), ne(companies.id, excludeCompanyId))
+        : eq(companies.slug, trySlug),
+      columns: { id: true },
+    });
+    if (!existing) return trySlug;
   }
   return `${candidate}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -31,7 +35,7 @@ export async function saveCompany(
   _prevState: CompanyActionState,
   formData: FormData,
 ): Promise<CompanyActionState> {
-  const { supabase, user, profile } = await requireAdmin();
+  const { user, profile } = await requireAdmin();
 
   const parsed = companySchema.safeParse({
     name: formData.get("name"),
@@ -47,59 +51,40 @@ export async function saveCompany(
     return { error: "Logo must be smaller than 2MB" };
   }
 
-  let companyId = profile.company_id;
+  let companyId = profile.companyId;
 
-  if (!companyId) {
-    const slug = await uniqueSlug(supabase, parsed.data.name);
-    const { data: created, error: insertError } = await supabase
-      .from("companies")
-      .insert({ name: parsed.data.name, slug, slack_webhook_url: parsed.data.slackWebhookUrl })
-      .select("id")
-      .single();
+  try {
+    if (!companyId) {
+      const slug = await uniqueSlug(parsed.data.name);
+      const [created] = await db
+        .insert(companies)
+        .values({ name: parsed.data.name, slug, slackWebhookUrl: parsed.data.slackWebhookUrl })
+        .returning({ id: companies.id });
+      companyId = created.id;
 
-    if (insertError || !created) {
-      return { error: insertError?.message ?? "Could not create company" };
+      await db.update(profiles).set({ companyId }).where(eq(profiles.id, user.id));
+    } else {
+      await db
+        .update(companies)
+        .set({ name: parsed.data.name, slackWebhookUrl: parsed.data.slackWebhookUrl })
+        .where(eq(companies.id, companyId));
     }
-    companyId = created.id;
-
-    const { error: linkError } = await supabase
-      .from("profiles")
-      .update({ company_id: companyId })
-      .eq("id", user.id);
-    if (linkError) {
-      return { error: linkError.message };
-    }
-  } else {
-    const { error: updateError } = await supabase
-      .from("companies")
-      .update({ name: parsed.data.name, slack_webhook_url: parsed.data.slackWebhookUrl })
-      .eq("id", companyId);
-    if (updateError) {
-      return { error: updateError.message };
-    }
+  } catch (err) {
+    console.error("Failed to save company", err);
+    return { error: "Could not save company details." };
   }
 
   if (hasLogo) {
-    const extension = logo.name.split(".").pop() || "png";
-    const path = `${companyId}/logo-${Date.now()}.${extension}`;
-    const { error: uploadError } = await supabase.storage
-      .from("company-logos")
-      .upload(path, logo, { upsert: true, contentType: logo.type || undefined });
-
-    if (uploadError) {
-      return { error: `Company saved, but the logo upload failed: ${uploadError.message}` };
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("company-logos").getPublicUrl(path);
-
-    const { error: logoUpdateError } = await supabase
-      .from("companies")
-      .update({ logo_url: publicUrl })
-      .eq("id", companyId);
-    if (logoUpdateError) {
-      return { error: logoUpdateError.message };
+    try {
+      const extension = logo.name.split(".").pop() || "png";
+      const blob = await put(`company-logos/${companyId}-${Date.now()}.${extension}`, logo, {
+        access: "public",
+        contentType: logo.type || undefined,
+      });
+      await db.update(companies).set({ logoUrl: blob.url }).where(eq(companies.id, companyId));
+    } catch (err) {
+      console.error("Failed to upload logo", err);
+      return { error: "Company saved, but the logo upload failed." };
     }
   }
 

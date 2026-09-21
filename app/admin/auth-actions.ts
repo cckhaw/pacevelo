@@ -1,16 +1,19 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/db";
+import { profiles } from "@/db/schema";
+import { hashPassword, verifyPassword } from "@/lib/password";
+import { createSession, clearSession } from "@/lib/session";
 
 export interface AuthActionState {
   error?: string;
-  message?: string;
 }
 
 const credentialsSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address"),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -31,24 +34,27 @@ export async function signUpAdmin(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: { full_name: fullName, role: "admin" },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/admin`,
-    },
+  const existing = await db.query.profiles.findFirst({
+    where: eq(profiles.email, parsed.data.email),
+    columns: { id: true },
   });
-
-  if (error) {
-    return { error: error.message };
+  if (existing) {
+    return { error: "An account with this email already exists." };
   }
 
-  if (!data.session) {
-    return { message: "Check your inbox to confirm your email, then sign in." };
-  }
+  const passwordHash = await hashPassword(parsed.data.password);
 
+  const [created] = await db
+    .insert(profiles)
+    .values({
+      email: parsed.data.email,
+      passwordHash,
+      fullName,
+      role: "admin",
+    })
+    .returning({ id: profiles.id });
+
+  await createSession({ userId: created.id, role: "admin" });
   redirect("/admin/company");
 }
 
@@ -64,17 +70,25 @@ export async function signInAdmin(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) {
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.email, parsed.data.email),
+    columns: { id: true, role: true, passwordHash: true },
+  });
+
+  if (!profile?.passwordHash || profile.role !== "admin") {
     return { error: "Incorrect email or password." };
   }
 
+  const valid = await verifyPassword(parsed.data.password, profile.passwordHash);
+  if (!valid) {
+    return { error: "Incorrect email or password." };
+  }
+
+  await createSession({ userId: profile.id, role: profile.role });
   redirect("/admin");
 }
 
 export async function signOutAdmin() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await clearSession();
   redirect("/admin/login");
 }

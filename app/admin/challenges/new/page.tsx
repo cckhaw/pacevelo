@@ -7,13 +7,13 @@ import { requireAdmin } from "@/lib/auth";
 export default async function NewChallengePage() {
   const { profile } = await requireAdmin();
 
-  if (!profile.company_id) {
+  if (!profile.companyId) {
     redirect("/admin/company");
   }
 
   return (
     <div className="min-h-screen bg-secondary">
-      <AdminNav fullName={profile.full_name} hasCompany={Boolean(profile.company_id)} />
+      <AdminNav fullName={profile.fullName} hasCompany={Boolean(profile.companyId)} />
       <main className="mx-auto max-w-2xl px-4 py-10">
         <Card>
           <CardHeader>

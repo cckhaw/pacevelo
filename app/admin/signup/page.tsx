@@ -46,7 +46,6 @@ export default function AdminSignupPage() {
               />
             </div>
             {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
-            {state.message ? <p className="text-sm text-primary">{state.message}</p> : null}
             <SubmitButton className="w-full" size="lg">
               Create account
             </SubmitButton>
