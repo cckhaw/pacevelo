@@ -8,11 +8,11 @@ export default async function CompanyLeaderboardPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ welcome?: string }>;
+  searchParams: Promise<{ welcome?: string; challengeId?: string }>;
 }) {
   const { slug } = await params;
-  const { welcome } = await searchParams;
-  const data = await getLeaderboardData(slug);
+  const { welcome, challengeId } = await searchParams;
+  const data = await getLeaderboardData(slug, { challengeId });
 
   if (!data.company) {
     notFound();

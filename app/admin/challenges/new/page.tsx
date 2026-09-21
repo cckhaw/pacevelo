@@ -3,6 +3,7 @@ import { AdminNav } from "@/components/admin-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChallengeForm } from "@/components/admin/challenge-form";
 import { requireAdmin } from "@/lib/auth";
+import { createChallenge } from "@/app/admin/challenges/actions";
 
 export default async function NewChallengePage() {
   const { profile } = await requireAdmin();
@@ -21,7 +22,7 @@ export default async function NewChallengePage() {
             <CardDescription>Set the dates, the metric that decides the leaderboard, and who it&apos;s for.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChallengeForm />
+            <ChallengeForm action={createChallenge} />
           </CardContent>
         </Card>
       </main>

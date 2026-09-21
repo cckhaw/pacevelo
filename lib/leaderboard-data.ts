@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/db";
-import { activities, challenges, companies, profiles } from "@/db/schema";
+import { activities, activityChallengeCredits, challenges, companies, profiles } from "@/db/schema";
 import type { ActivityType } from "@/db/schema";
 import {
   buildDepartmentStandings,
@@ -52,18 +52,33 @@ export async function getLeaderboardData(
   }
 
   const now = new Date();
-  const activeChallenges = await db.query.challenges.findMany({
-    where: and(
-      eq(challenges.companyId, company.id),
-      eq(challenges.isActive, true),
-      lte(challenges.startDate, now),
-      gte(challenges.endDate, now),
-    ),
-    orderBy: desc(challenges.startDate),
-  });
+  let challengeList: (typeof challenges.$inferSelect)[] = [];
+  let activeChallenge: (typeof challenges.$inferSelect) | null = null;
 
-  const activeChallenge =
-    activeChallenges.find((c) => c.id === options.challengeId) ?? activeChallenges[0] ?? null;
+  if (options.challengeId) {
+    // An explicit request for one challenge (e.g. an archived one's "final
+    // leaderboard" link) is honored regardless of its date window.
+    const requested = await db.query.challenges.findFirst({
+      where: and(eq(challenges.id, options.challengeId), eq(challenges.companyId, company.id)),
+    });
+    if (requested) {
+      activeChallenge = requested;
+      challengeList = [requested];
+    }
+  }
+
+  if (!activeChallenge) {
+    challengeList = await db.query.challenges.findMany({
+      where: and(
+        eq(challenges.companyId, company.id),
+        eq(challenges.isActive, true),
+        lte(challenges.startDate, now),
+        gte(challenges.endDate, now),
+      ),
+      orderBy: desc(challenges.startDate),
+    });
+    activeChallenge = challengeList[0] ?? null;
+  }
 
   if (!activeChallenge) {
     return {
@@ -86,17 +101,18 @@ export async function getLeaderboardData(
       movingTimeSeconds: activities.movingTimeSeconds,
       elevationGainMeters: activities.elevationGainMeters,
     })
-    .from(activities)
+    .from(activityChallengeCredits)
+    .innerJoin(activities, eq(activityChallengeCredits.activityId, activities.id))
     .innerJoin(profiles, eq(activities.profileId, profiles.id))
     .where(
       options.activityType
-        ? and(eq(activities.challengeId, activeChallenge.id), eq(activities.type, options.activityType))
-        : eq(activities.challengeId, activeChallenge.id),
+        ? and(eq(activityChallengeCredits.challengeId, activeChallenge.id), eq(activities.type, options.activityType))
+        : eq(activityChallengeCredits.challengeId, activeChallenge.id),
     );
 
   return {
     company: { name: company.name },
-    challenges: activeChallenges.map(serializeChallenge),
+    challenges: challengeList.map(serializeChallenge),
     activeChallenge: serializeChallenge(activeChallenge),
     individual: buildIndividualStandings(rows, activeChallenge.metricType),
     departmental: buildDepartmentStandings(rows, activeChallenge.metricType),

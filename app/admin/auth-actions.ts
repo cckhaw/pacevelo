@@ -7,14 +7,15 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSession, clearSession } from "@/lib/session";
+import { emailSchema, passwordSchema } from "@/lib/validations";
 
 export interface AuthActionState {
   error?: string;
 }
 
 const credentialsSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: emailSchema,
+  password: passwordSchema,
 });
 
 export async function signUpAdmin(

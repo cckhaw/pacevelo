@@ -25,7 +25,9 @@ export function AdminNav({ fullName, hasCompany }: { fullName: string; hasCompan
           </nav>
         ) : null}
         <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-muted-foreground sm:inline">{fullName}</span>
+          <Link href="/admin/account" className="hidden text-sm text-muted-foreground hover:text-foreground sm:inline">
+            {fullName}
+          </Link>
           <form action={signOutAdmin}>
             <Button variant="outline" size="sm" type="submit">
               Sign out
