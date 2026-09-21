@@ -8,7 +8,7 @@ import { sendOtpEmail } from "@/lib/email";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createEmailVerification, verifyEmailOtp } from "@/lib/otp";
 import { createSession } from "@/lib/session";
-import { emailSchema, passwordSchema } from "@/lib/validations";
+import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 
 export interface RequestOtpResult {
   error?: string;
@@ -70,6 +70,7 @@ export async function verifyChallengeOtpAndJoin(
   rawEmail: string,
   code: string,
   password: string,
+  confirmPassword: string,
   fullName: string,
   department: string,
 ): Promise<VerifyAndJoinResult> {
@@ -105,6 +106,9 @@ export async function verifyChallengeOtpAndJoin(
     const valid = await verifyPassword(parsedPassword.data, profile.passwordHash);
     if (!valid) return { error: "Incorrect password for this account." };
   } else {
+    if (!passwordsMatch(password, confirmPassword)) {
+      return { error: "Passwords don't match." };
+    }
     const passwordHash = await hashPassword(parsedPassword.data);
     const trimmedName = fullName.trim();
     if (!profile && !trimmedName) {

@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { emailSchema, passwordSchema } from "@/lib/validations";
+import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 
 export interface AccountActionState {
   error?: string;
@@ -30,6 +30,9 @@ export async function changePassword(
   }
   if (!parsedNew.success) {
     return { error: parsedNew.error.issues[0]?.message ?? "Invalid password" };
+  }
+  if (!passwordsMatch(formData.get("newPassword"), formData.get("confirmNewPassword"))) {
+    return { error: "New passwords don't match." };
   }
 
   const passwordHash = await hashPassword(parsedNew.data);

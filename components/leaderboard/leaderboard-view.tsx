@@ -66,7 +66,11 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
     initialData: isDefaultView ? initialData : undefined,
     initialDataUpdatedAt: isDefaultView ? () => Date.now() : undefined,
     placeholderData: keepPreviousData,
-    refetchInterval: POLL_INTERVAL_MS,
+    refetchInterval: (query) => {
+      const activeChallenge = query.state.data?.activeChallenge;
+      if (!activeChallenge) return POLL_INTERVAL_MS;
+      return new Date(activeChallenge.endDate).getTime() < Date.now() ? false : POLL_INTERVAL_MS;
+    },
     refetchOnWindowFocus: true,
   });
 
@@ -78,6 +82,7 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
 
   const view = data ?? initialData;
   const secondsAgo = Math.max(0, Math.round((now - dataUpdatedAt) / 1000));
+  const hasEnded = view.activeChallenge ? new Date(view.activeChallenge.endDate).getTime() < now : false;
 
   if (!view.activeChallenge) {
     return (
@@ -115,25 +120,34 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
             </select>
           ) : null}
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-            </span>
-            Live · updated {timeAgoLabel(secondsAgo)}
-          </div>
+          {hasEnded ? (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-flex h-2 w-2 rounded-full bg-muted-foreground/50" />
+              Challenge ended
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+                Live · updated {timeAgoLabel(secondsAgo)}
+              </div>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            aria-label="Refresh leaderboard now"
-            title="Just synced a workout? Refresh now."
-          >
-            <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
-          </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                aria-label="Refresh leaderboard now"
+                title="Just synced a workout? Refresh now."
+              >
+                <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

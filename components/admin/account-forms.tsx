@@ -71,6 +71,17 @@ export function AccountForms({ email }: { email: string }) {
                 autoComplete="new-password"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmNewPassword">Confirm new password</Label>
+              <Input
+                id="confirmNewPassword"
+                name="confirmNewPassword"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </div>
             {passwordState.error ? <p className="text-sm text-destructive">{passwordState.error}</p> : null}
             {passwordState.success ? <p className="text-sm text-primary">{passwordState.success}</p> : null}
             <SubmitButton>Update password</SubmitButton>

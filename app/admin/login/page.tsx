@@ -2,11 +2,11 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
+import { LogoMark } from "@/components/logo";
 import { signInAdmin, type AuthActionState } from "@/app/admin/auth-actions";
 
 const initialState: AuthActionState = {};
@@ -18,9 +18,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Building2 className="h-6 w-6" />
-          </div>
+          <LogoMark size={48} className="mb-2 rounded-xl" />
           <CardTitle className="text-xl">HR Admin sign in</CardTitle>
           <CardDescription>Manage your company&apos;s challenges and roster.</CardDescription>
         </CardHeader>

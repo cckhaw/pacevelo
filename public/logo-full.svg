@@ -1,0 +1,44 @@
+<svg width="820" height="220" viewBox="0 0 820 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pv-chevron-full" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#22C55E" />
+      <stop offset="100%" stop-color="#22D3EE" />
+    </linearGradient>
+  </defs>
+
+  <svg x="10" y="10" width="200" height="200" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="112" fill="#0B1220" />
+    <polyline
+      points="176,166 262,256 176,346"
+      fill="none"
+      stroke="url(#pv-chevron-full)"
+      stroke-width="52"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <polyline
+      points="266,166 352,256 266,346"
+      fill="none"
+      stroke="url(#pv-chevron-full)"
+      stroke-width="52"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+
+  <text x="248" y="128" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="88" font-weight="800">
+    <tspan fill="#0B1220">Pace</tspan><tspan fill="#22D3EE">Velo</tspan>
+  </text>
+
+  <text
+    x="250"
+    y="168"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="22"
+    font-weight="600"
+    letter-spacing="4"
+    fill="#6B7280"
+  >
+    WORKPLACE MOVEMENT ENGINE
+  </text>
+</svg>

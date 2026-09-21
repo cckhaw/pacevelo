@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { Activity } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChallengeJoinForm } from "@/components/join/challenge-join-form";
+import { LogoMark } from "@/components/logo";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { isPast } from "@/lib/time";
@@ -39,9 +39,7 @@ export default async function JoinChallengePage({
               className="mb-2 rounded-xl object-contain"
             />
           ) : (
-            <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Activity className="h-7 w-7" />
-            </div>
+            <LogoMark size={56} className="mb-2 rounded-xl" />
           )}
           <CardTitle className="text-xl">{challenge.title}</CardTitle>
           <CardDescription>
