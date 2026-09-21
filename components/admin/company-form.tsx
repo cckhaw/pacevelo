@@ -15,6 +15,21 @@ export function CompanyForm({ company }: { company: Company | null }) {
 
   return (
     <form action={formAction} className="space-y-5" encType="multipart/form-data">
+      {!company ? (
+        <div className="space-y-2">
+          <Label htmlFor="onboardingCode">Onboarding code</Label>
+          <Input
+            id="onboardingCode"
+            name="onboardingCode"
+            required
+            placeholder="e.g. AB12CD34EF"
+            className="uppercase"
+            autoCapitalize="characters"
+          />
+          <p className="text-xs text-muted-foreground">The code PaceVelo gave you when you signed up.</p>
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <Label htmlFor="name">Company name</Label>
         <Input id="name" name="name" defaultValue={company?.name ?? ""} required placeholder="Acme Corp" />

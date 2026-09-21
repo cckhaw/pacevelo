@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { getSession } from "@/lib/session";
+import { hasBackofficeSession } from "@/lib/backoffice-session";
 
 /**
  * Guards an /admin page: requires a signed-in session whose profile has
@@ -33,4 +34,12 @@ export async function getCurrentProfile() {
   if (!session) return null;
 
   return db.query.profiles.findFirst({ where: eq(profiles.id, session.userId) }) ?? null;
+}
+
+/** Guards a /backoffice page: requires the back office session cookie. Redirects to /backoffice/login otherwise. */
+export async function requireBackoffice() {
+  const ok = await hasBackofficeSession();
+  if (!ok) {
+    redirect("/backoffice/login");
+  }
 }

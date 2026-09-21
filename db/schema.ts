@@ -8,8 +8,9 @@ import {
   doublePrecision,
   integer,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const profileRoleValues = ["employee", "admin"] as const;
 export const metricTypeValues = ["total_distance_km", "active_time_mins", "elevation_m"] as const;
@@ -26,6 +27,14 @@ export const companies = pgTable("companies", {
   slug: text("slug").notNull().unique(),
   logoUrl: text("logo_url"),
   slackWebhookUrl: text("slack_webhook_url"),
+  // Max challenges this company may ever create; null = unlimited. Set from
+  // the onboarding code used at setup, adjustable from the back office.
+  challengeLimit: integer("challenge_limit"),
+  // Access cutoff for setting up new challenges; defaults to 90 days out at
+  // setup time, adjustable from the back office.
+  expiresAt: timestamp("expires_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now() + interval '90 days'`),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -139,9 +148,46 @@ export const emailVerifications = pgTable("email_verifications", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// 8. Onboarding codes - alphanumeric codes generated from the back office
+// that an HR admin must supply when first setting up a company. Each code
+// is single-use and optionally caps how many challenges that company may
+// ever create (null = unlimited).
+export const onboardingCodes = pgTable("onboarding_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(),
+  challengeLimit: integer("challenge_limit"),
+  usedByCompanyId: uuid("used_by_company_id").references(() => companies.id, { onDelete: "set null" }),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// 9. One row per sign-in (admin login, participant login, Strava
+// connect/reconnect, challenge-join signup) - powers the back office's
+// "how often do people visit" stats.
+export const loginEvents = pgTable(
+  "login_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    role: text("role").$type<ProfileRole>().notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("login_events_profile_idx").on(table.profileId), index("login_events_occurred_at_idx").on(table.occurredAt)],
+);
+
 export const companiesRelations = relations(companies, ({ many }) => ({
   profiles: many(profiles),
   challenges: many(challenges),
+}));
+
+export const onboardingCodesRelations = relations(onboardingCodes, ({ one }) => ({
+  usedByCompany: one(companies, { fields: [onboardingCodes.usedByCompanyId], references: [companies.id] }),
+}));
+
+export const loginEventsRelations = relations(loginEvents, ({ one }) => ({
+  profile: one(profiles, { fields: [loginEvents.profileId], references: [profiles.id] }),
 }));
 
 export const profilesRelations = relations(profiles, ({ one, many }) => ({
@@ -185,3 +231,7 @@ export type ActivityChallengeCredit = typeof activityChallengeCredits.$inferSele
 export type NewActivityChallengeCredit = typeof activityChallengeCredits.$inferInsert;
 export type EmailVerification = typeof emailVerifications.$inferSelect;
 export type NewEmailVerification = typeof emailVerifications.$inferInsert;
+export type OnboardingCode = typeof onboardingCodes.$inferSelect;
+export type NewOnboardingCode = typeof onboardingCodes.$inferInsert;
+export type LoginEvent = typeof loginEvents.$inferSelect;
+export type NewLoginEvent = typeof loginEvents.$inferInsert;

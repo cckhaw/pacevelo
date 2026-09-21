@@ -1,6 +1,7 @@
 import "server-only";
 
 import { SignJWT, jwtVerify } from "jose";
+import { sessionSecretKey } from "@/lib/session-secret";
 
 const STATE_DURATION_SECONDS = 600; // matches Strava's own authorization window
 
@@ -8,14 +9,6 @@ export interface StravaOAuthState {
   companySlug?: string;
   redirectTo?: string;
   existingUserId?: string;
-}
-
-function secretKey() {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("SESSION_SECRET env var must be set to a random string of at least 32 characters");
-  }
-  return new TextEncoder().encode(secret);
 }
 
 /**
@@ -31,12 +24,12 @@ export async function encodeStravaState(state: StravaOAuthState): Promise<string
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${STATE_DURATION_SECONDS}s`)
-    .sign(secretKey());
+    .sign(sessionSecretKey());
 }
 
 export async function decodeStravaState(raw: string): Promise<StravaOAuthState | null> {
   try {
-    const { payload } = await jwtVerify(raw, secretKey());
+    const { payload } = await jwtVerify(raw, sessionSecretKey());
     return {
       companySlug: typeof payload.companySlug === "string" ? payload.companySlug : undefined,
       redirectTo: typeof payload.redirectTo === "string" ? payload.redirectTo : undefined,

@@ -35,3 +35,27 @@ export async function sendOtpEmail(to: string, code: string): Promise<void> {
     throw new Error(`Failed to send OTP email: ${error.message}`);
   }
 }
+
+export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
+  const resend = client();
+
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: "Reset your PaceVelo password",
+    text: `We received a request to reset your PaceVelo password. Reset it here: ${resetUrl}\n\nThis link expires in 30 minutes. If you didn't request this, you can ignore this email.`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 420px; margin: 0 auto;">
+        <p>We received a request to reset your PaceVelo password.</p>
+        <p style="margin: 24px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background: #0B1220; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none;">Reset password</a>
+        </p>
+        <p style="color: #666; font-size: 14px;">This link expires in 30 minutes. If you didn't request this, you can ignore this email.</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    throw new Error(`Failed to send password reset email: ${error.message}`);
+  }
+}

@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/db";
-import { activities, activityChallengeCredits, challenges, companies, profiles } from "@/db/schema";
+import { activities, activityChallengeCredits, challengeParticipants, challenges, companies, profiles } from "@/db/schema";
 import type { ActivityType } from "@/db/schema";
 import {
   buildDepartmentStandings,
@@ -90,31 +90,43 @@ export async function getLeaderboardData(
     };
   }
 
-  const rows = await db
-    .select({
-      profileId: activities.profileId,
-      fullName: profiles.fullName,
-      avatarUrl: profiles.avatarUrl,
-      department: profiles.department,
-      type: activities.type,
-      distanceMeters: activities.distanceMeters,
-      movingTimeSeconds: activities.movingTimeSeconds,
-      elevationGainMeters: activities.elevationGainMeters,
-    })
-    .from(activityChallengeCredits)
-    .innerJoin(activities, eq(activityChallengeCredits.activityId, activities.id))
-    .innerJoin(profiles, eq(activities.profileId, profiles.id))
-    .where(
-      options.activityType
-        ? and(eq(activityChallengeCredits.challengeId, activeChallenge.id), eq(activities.type, options.activityType))
-        : eq(activityChallengeCredits.challengeId, activeChallenge.id),
-    );
+  const [roster, rows] = await Promise.all([
+    db
+      .select({
+        profileId: challengeParticipants.profileId,
+        fullName: profiles.fullName,
+        avatarUrl: profiles.avatarUrl,
+        department: profiles.department,
+      })
+      .from(challengeParticipants)
+      .innerJoin(profiles, eq(challengeParticipants.profileId, profiles.id))
+      .where(eq(challengeParticipants.challengeId, activeChallenge.id)),
+    db
+      .select({
+        profileId: activities.profileId,
+        fullName: profiles.fullName,
+        avatarUrl: profiles.avatarUrl,
+        department: profiles.department,
+        type: activities.type,
+        distanceMeters: activities.distanceMeters,
+        movingTimeSeconds: activities.movingTimeSeconds,
+        elevationGainMeters: activities.elevationGainMeters,
+      })
+      .from(activityChallengeCredits)
+      .innerJoin(activities, eq(activityChallengeCredits.activityId, activities.id))
+      .innerJoin(profiles, eq(activities.profileId, profiles.id))
+      .where(
+        options.activityType
+          ? and(eq(activityChallengeCredits.challengeId, activeChallenge.id), eq(activities.type, options.activityType))
+          : eq(activityChallengeCredits.challengeId, activeChallenge.id),
+      ),
+  ]);
 
   return {
     company: { name: company.name },
     challenges: challengeList.map(serializeChallenge),
     activeChallenge: serializeChallenge(activeChallenge),
-    individual: buildIndividualStandings(rows, activeChallenge.metricType),
-    departmental: buildDepartmentStandings(rows, activeChallenge.metricType),
+    individual: buildIndividualStandings(roster, rows, activeChallenge.metricType),
+    departmental: buildDepartmentStandings(roster, rows, activeChallenge.metricType),
   };
 }

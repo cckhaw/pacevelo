@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache";
 import { eq, ne, and } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { db } from "@/db";
-import { companies, profiles } from "@/db/schema";
+import { companies, onboardingCodes, profiles } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { companySchema } from "@/lib/validations";
 import { slugify } from "@/lib/slug";
+
+const COMPANY_ACCESS_DURATION_MS = 90 * 24 * 60 * 60 * 1000;
 
 export interface CompanyActionState {
   error?: string;
@@ -52,17 +54,45 @@ export async function saveCompany(
   }
 
   let companyId = profile.companyId;
+  let onboardingCode: { id: string; challengeLimit: number | null } | null = null;
+
+  if (!companyId) {
+    const rawCode = String(formData.get("onboardingCode") ?? "")
+      .trim()
+      .toUpperCase();
+    if (!rawCode) {
+      return { error: "Enter the onboarding code PaceVelo gave you." };
+    }
+    const codeRecord = await db.query.onboardingCodes.findFirst({ where: eq(onboardingCodes.code, rawCode) });
+    if (!codeRecord) {
+      return { error: "That onboarding code isn't valid." };
+    }
+    if (codeRecord.usedByCompanyId) {
+      return { error: "That onboarding code has already been used." };
+    }
+    onboardingCode = codeRecord;
+  }
 
   try {
     if (!companyId) {
       const slug = await uniqueSlug(parsed.data.name);
       const [created] = await db
         .insert(companies)
-        .values({ name: parsed.data.name, slug, slackWebhookUrl: parsed.data.slackWebhookUrl })
+        .values({
+          name: parsed.data.name,
+          slug,
+          slackWebhookUrl: parsed.data.slackWebhookUrl,
+          challengeLimit: onboardingCode!.challengeLimit,
+          expiresAt: new Date(Date.now() + COMPANY_ACCESS_DURATION_MS),
+        })
         .returning({ id: companies.id });
       companyId = created.id;
 
       await db.update(profiles).set({ companyId }).where(eq(profiles.id, user.id));
+      await db
+        .update(onboardingCodes)
+        .set({ usedByCompanyId: companyId, usedAt: new Date() })
+        .where(eq(onboardingCodes.id, onboardingCode!.id));
     } else {
       await db
         .update(companies)
