@@ -2,11 +2,11 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
+import { LogoMark } from "@/components/logo";
 import { signUpAdmin, type AuthActionState } from "@/app/admin/auth-actions";
 
 const initialState: AuthActionState = {};
@@ -18,9 +18,7 @@ export default function AdminSignupPage() {
     <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Building2 className="h-6 w-6" />
-          </div>
+          <LogoMark size={48} className="mb-2 rounded-xl" />
           <CardTitle className="text-xl">Set up your company</CardTitle>
           <CardDescription>Launch a branded challenge for your team in under 5 minutes.</CardDescription>
         </CardHeader>
@@ -39,6 +37,17 @@ export default function AdminSignupPage() {
               <Input
                 id="password"
                 name="password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
                 type="password"
                 required
                 minLength={8}

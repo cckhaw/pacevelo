@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Activity } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "@/components/login-form";
+import { LogoMark } from "@/components/logo";
 
 const ERROR_MESSAGES: Record<string, string> = {
   strava_access_denied: "You cancelled the Strava connection. You can try again anytime.",
@@ -26,9 +26,7 @@ export default async function LoginPage({
     <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Activity className="h-6 w-6" />
-          </div>
+          <LogoMark size={48} className="mb-2 rounded-xl" />
           <CardTitle className="text-xl">Log in to PaceVelo</CardTitle>
           <CardDescription>View your challenges and leaderboards.</CardDescription>
         </CardHeader>

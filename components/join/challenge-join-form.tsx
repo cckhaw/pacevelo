@@ -11,6 +11,7 @@ export function ChallengeJoinForm({ challengeId, emailDomain }: { challengeId: s
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState("");
   const [isExistingAccount, setIsExistingAccount] = useState(false);
@@ -49,7 +50,15 @@ export function ChallengeJoinForm({ challengeId, emailDomain }: { challengeId: s
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await verifyChallengeOtpAndJoin(challengeId, email, code, password, fullName, department);
+      const result = await verifyChallengeOtpAndJoin(
+        challengeId,
+        email,
+        code,
+        password,
+        confirmPassword,
+        fullName,
+        department,
+      );
       // A successful join redirects server-side and never returns here.
       if (result?.error) {
         setError(result.error);
@@ -141,6 +150,21 @@ export function ChallengeJoinForm({ challengeId, emailDomain }: { challengeId: s
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
+
+      {!isExistingAccount ? (
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </div>
+      ) : null}
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {notice ? <p className="text-sm text-primary">{notice}</p> : null}

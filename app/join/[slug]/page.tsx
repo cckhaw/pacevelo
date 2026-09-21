@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, gte } from "drizzle-orm";
-import { Activity, ArrowRight, Trophy } from "lucide-react";
+import { ArrowRight, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LogoMark } from "@/components/logo";
 import { db } from "@/db";
 import { challenges, companies } from "@/db/schema";
 
@@ -46,9 +47,7 @@ export default async function JoinCompanyPage({
               className="mb-2 rounded-xl object-contain"
             />
           ) : (
-            <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Activity className="h-7 w-7" />
-            </div>
+            <LogoMark size={56} className="mb-2 rounded-xl" />
           )}
           <CardTitle className="text-xl">Join a challenge at {company.name}</CardTitle>
           <CardDescription>Pick a challenge below to sign up and connect Strava.</CardDescription>

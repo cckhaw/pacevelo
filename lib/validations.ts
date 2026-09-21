@@ -3,6 +3,10 @@ import { z } from "zod";
 export const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address");
 export const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
 
+export function passwordsMatch(password: FormDataEntryValue | null, confirmPassword: FormDataEntryValue | null) {
+  return password === confirmPassword;
+}
+
 // Accepts "acme.com", "@acme.com", or someone pasting "https://acme.com/".
 export const emailDomainSchema = z
   .union([

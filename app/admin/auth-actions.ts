@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSession, clearSession } from "@/lib/session";
-import { emailSchema, passwordSchema } from "@/lib/validations";
+import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 
 export interface AuthActionState {
   error?: string;
@@ -33,6 +33,9 @@ export async function signUpAdmin(
   }
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  if (!passwordsMatch(formData.get("password"), formData.get("confirmPassword"))) {
+    return { error: "Passwords don't match." };
   }
 
   const existing = await db.query.profiles.findFirst({
