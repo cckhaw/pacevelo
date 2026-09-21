@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LogoFull, LogoMark } from "@/components/logo";
+import { LogoInline, LogoMark } from "@/components/logo";
 
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-secondary">
       <header className="flex items-center justify-between px-4 py-4 sm:px-6">
-        <LogoFull height={28} />
+        <LogoInline markSize={32} />
         <Button asChild variant="outline">
           <Link href="/login">Log in</Link>
         </Button>

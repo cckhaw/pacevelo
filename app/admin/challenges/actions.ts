@@ -25,6 +25,7 @@ async function findOverlappingChallenges(
     where: and(
       eq(challenges.companyId, companyId),
       eq(challenges.isActive, true),
+      gte(challenges.endDate, new Date()), // Already-ended challenges can't cause future double-logging.
       lte(challenges.startDate, endDate),
       gte(challenges.endDate, startDate),
       excludeChallengeId ? ne(challenges.id, excludeChallengeId) : undefined,

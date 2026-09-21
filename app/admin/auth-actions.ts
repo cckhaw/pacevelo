@@ -94,5 +94,5 @@ export async function signInAdmin(
 
 export async function signOutAdmin() {
   await clearSession();
-  redirect("/admin/login");
+  redirect("/");
 }

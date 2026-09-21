@@ -18,3 +18,16 @@ export function LogoFull({ height = 40, className }: { height?: number; classNam
     />
   );
 }
+
+/** Icon + "PaceVelo" as real text (no baked-in tagline) - for compact nav bars where LogoFull's fixed aspect ratio shrinks the wordmark to the point of illegibility. */
+export function LogoInline({ markSize = 32, className }: { markSize?: number; className?: string }) {
+  return (
+    <span className={cn("inline-flex items-center gap-2", className)}>
+      <LogoMark size={markSize} className="rounded-md" />
+      <span className="text-lg font-extrabold tracking-tight">
+        <span className="text-foreground">Pace</span>
+        <span className="text-primary">Velo</span>
+      </span>
+    </span>
+  );
+}
