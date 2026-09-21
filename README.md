@@ -33,6 +33,50 @@ This phase implements:
   (dates, metric, allowed activities, target departments), and a 1-click
   invite link generator (`app.pacevelo.com/join/<slug>`).
 
+## Phase 2: Live Leaderboard & Activity Sync
+
+This phase implements:
+
+- **Strava webhook handler** (`/api/webhooks/strava`): `GET` answers the
+  one-time `hub.challenge` handshake Strava sends when a push subscription
+  is created (see setup below). `POST` receives `activity.create` events,
+  acks within Strava's 2-second window, then (via `after()`) fetches the
+  full activity, matches it to whichever of the company's active challenges
+  covers that activity type/date/department, and inserts it into
+  `activities` — idempotently, since Strava can redeliver the same event
+  (`lib/strava/webhook-processing.ts`).
+- **Public leaderboard** (`/company/[slug]`): individual standings and a
+  departmental battle, ranked by whichever metric the active challenge
+  uses (distance/time/elevation), with an activity-type filter. "Live"
+  here means the client polls `lib/leaderboard-data.ts`'s output every 20s
+  via React Query rather than push/WebSockets — enough for a challenge
+  leaderboard, and much less infrastructure.
+
+### Registering the Strava webhook subscription
+
+Strava allows exactly **one push subscription per API application** (not
+per company) — you create it once, and every connected athlete's activities
+flow through it. Do this after deploying, once `STRAVA_WEBHOOK_VERIFY_TOKEN`
+is set:
+
+```bash
+curl -X POST https://www.strava.com/api/v3/push_subscriptions \
+  -F client_id=$STRAVA_CLIENT_ID \
+  -F client_secret=$STRAVA_CLIENT_SECRET \
+  -F callback_url=$NEXT_PUBLIC_APP_URL/api/webhooks/strava \
+  -F verify_token=$STRAVA_WEBHOOK_VERIFY_TOKEN
+```
+
+Strava immediately calls back with a `GET` to `callback_url` carrying
+`hub.challenge`; our route answers it automatically, and the command above
+returns the new subscription's `id` once that succeeds. To confirm it's
+active, or to find its `id` for deletion:
+
+```bash
+curl "https://www.strava.com/api/v3/push_subscriptions?client_id=$STRAVA_CLIENT_ID&client_secret=$STRAVA_CLIENT_SECRET"
+curl -X DELETE "https://www.strava.com/api/v3/push_subscriptions/<id>?client_id=$STRAVA_CLIENT_ID&client_secret=$STRAVA_CLIENT_SECRET"
+```
+
 ## Getting started
 
 1. **Create a Neon database.** Either via [neon.tech](https://neon.tech)
@@ -47,6 +91,9 @@ This phase implements:
      (https://www.strava.com/settings/api). Set its "Authorization Callback
      Domain" to the host in `NEXT_PUBLIC_APP_URL` (e.g. `localhost` for
      local dev).
+   - `STRAVA_WEBHOOK_VERIFY_TOKEN` — a random string you choose
+     (`openssl rand -hex 20`); see "Registering the Strava webhook
+     subscription" below.
 3. Run the schema migration against your Neon database:
    ```bash
    npm run db:migrate
@@ -62,8 +109,14 @@ This phase implements:
 - `db/migrations/` — generated SQL migrations, run with `npm run db:migrate`.
 - `lib/session.ts` / `lib/password.ts` — session cookie (JWT) + password hashing.
 - `lib/auth.ts` — `requireAdmin()` page guard used by every `/admin` route.
-- `lib/strava/` — Strava OAuth token exchange, refresh, and state encoding.
+- `lib/strava/` — Strava OAuth token exchange, refresh, state encoding, and
+  webhook event processing (`webhook-processing.ts`).
+- `lib/leaderboard.ts` / `lib/leaderboard-data.ts` — standings aggregation,
+  shared by the leaderboard page (SSR) and its polling API route.
 - `app/api/auth/strava/` — the OAuth route handlers.
+- `app/api/webhooks/strava/` — the Strava push-subscription webhook.
+- `app/api/company/[slug]/leaderboard/` — public leaderboard data endpoint.
 - `app/join/[slug]/` — employee invite landing page.
+- `app/company/[slug]/` — public leaderboard page.
 - `app/admin/` — HR admin portal (auth, company settings, challenges).
 - `components/ui/` — shared UI primitives (shadcn-style, built on Radix).

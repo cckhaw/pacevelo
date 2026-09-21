@@ -1,6 +1,7 @@
 import "server-only";
 
 const STRAVA_OAUTH_TOKEN_URL = "https://www.strava.com/oauth/token";
+const STRAVA_API_BASE = "https://www.strava.com/api/v3";
 export const STRAVA_AUTHORIZE_URL = "https://www.strava.com/oauth/authorize";
 
 export interface StravaAthlete {
@@ -70,6 +71,31 @@ export async function refreshStravaToken(refreshToken: string): Promise<StravaTo
 
   if (!response.ok) {
     throw new Error(`Strava token refresh failed: ${response.status} ${await response.text()}`);
+  }
+
+  return response.json();
+}
+
+export interface StravaActivityDetail {
+  id: number;
+  type: string; // 'Run', 'Ride', 'Walk', 'Hike', ... (Strava's broader activity type set)
+  distance: number; // meters
+  moving_time: number; // seconds
+  total_elevation_gain: number; // meters
+  start_date: string; // ISO 8601
+}
+
+/** Fetches full telemetry for a single activity, used after an activity.create webhook event. */
+export async function getStravaActivity(
+  accessToken: string,
+  activityId: number,
+): Promise<StravaActivityDetail> {
+  const response = await fetch(`${STRAVA_API_BASE}/activities/${activityId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Strava get-activity failed: ${response.status} ${await response.text()}`);
   }
 
   return response.json();

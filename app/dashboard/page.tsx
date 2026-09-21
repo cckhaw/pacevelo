@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { CheckCircle2, Watch } from "lucide-react";
+import { CheckCircle2, Trophy, Watch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
@@ -75,11 +77,17 @@ export default async function DashboardPage({
             </div>
           ) : null}
 
-          {!profile.company ? (
+          {profile.company ? (
+            <Button asChild className="w-full">
+              <Link href={`/company/${profile.company.slug}`}>
+                <Trophy className="h-4 w-4" /> View leaderboard
+              </Link>
+            </Button>
+          ) : (
             <p className="text-sm text-muted-foreground">
               Ask your HR admin for your company&apos;s invite link to join a challenge.
             </p>
-          ) : null}
+          )}
         </CardContent>
       </Card>
     </div>
