@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { LogoFull } from "@/components/logo";
+import { LogoInline } from "@/components/logo";
 import { signOutAdmin } from "@/app/admin/auth-actions";
 
 export function AdminNav({ fullName, hasCompany }: { fullName: string; hasCompany: boolean }) {
@@ -8,7 +8,7 @@ export function AdminNav({ fullName, hasCompany }: { fullName: string; hasCompan
     <header className="border-b bg-card">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link href="/admin" className="flex items-center gap-2">
-          <LogoFull height={28} />
+          <LogoInline markSize={32} />
         </Link>
         {hasCompany ? (
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
