@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { CheckCircle2, Watch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/session";
+import { db } from "@/db";
+import { profiles } from "@/db/schema";
 import { getValidStravaAccessToken } from "@/lib/strava/tokens";
 
 export default async function DashboardPage({
@@ -11,32 +14,30 @@ export default async function DashboardPage({
   searchParams: Promise<{ welcome?: string }>;
 }) {
   const { welcome } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await getSession();
 
-  if (!user) {
+  if (!session) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, avatar_url, department, strava_athlete_id, company:companies(name, logo_url)")
-    .eq("id", user.id)
-    .single();
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.id, session.userId),
+    with: { company: true },
+  });
+
+  if (!profile) {
+    redirect("/login");
+  }
 
   let tokenStatus: "connected" | "error" = "error";
-  if (profile?.strava_athlete_id) {
+  if (profile.stravaAthleteId) {
     try {
-      await getValidStravaAccessToken(user.id);
+      await getValidStravaAccessToken(profile.id);
       tokenStatus = "connected";
     } catch {
       tokenStatus = "error";
     }
   }
-
-  const company = Array.isArray(profile?.company) ? profile.company[0] : profile?.company;
 
   return (
     <div className="mx-auto max-w-xl px-4 py-16">
@@ -48,11 +49,9 @@ export default async function DashboardPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {profile?.full_name ?? "Your account"}
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2">{profile.fullName}</CardTitle>
           <CardDescription>
-            {company?.name ? `Member of ${company.name}` : "Not yet linked to a company"}
+            {profile.company?.name ? `Member of ${profile.company.name}` : "Not yet linked to a company"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -69,14 +68,14 @@ export default async function DashboardPage({
             )}
           </div>
 
-          {profile?.department ? (
+          {profile.department ? (
             <div className="rounded-md border px-3 py-2 text-sm">
               <span className="text-muted-foreground">Department: </span>
               {profile.department}
             </div>
           ) : null}
 
-          {!company ? (
+          {!profile.company ? (
             <p className="text-sm text-muted-foreground">
               Ask your HR admin for your company&apos;s invite link to join a challenge.
             </p>

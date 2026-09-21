@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { randomUUID } from "crypto";
 import { STRAVA_AUTHORIZE_URL } from "@/lib/strava/client";
 import { encodeStravaState } from "@/lib/strava/state";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/session";
 
 const OAUTH_NONCE_COOKIE = "strava_oauth_nonce";
 
@@ -25,21 +25,18 @@ export async function GET(request: NextRequest) {
   const companySlug = searchParams.get("company") ?? undefined;
   const redirectTo = searchParams.get("redirect_to") ?? undefined;
 
-  // If the browser already holds a Supabase session (e.g. an existing
-  // employee reconnecting Strava, or an HR admin linking their own
-  // account), attach the new tokens to that profile instead of
-  // provisioning a brand new user in the callback.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // If the browser already holds a session (e.g. an existing employee
+  // reconnecting Strava, or an HR admin linking their own account),
+  // attach the new tokens to that profile instead of provisioning a
+  // brand new user in the callback.
+  const session = await getSession();
 
   const nonce = randomUUID();
   const state = encodeStravaState({
     nonce,
     companySlug,
     redirectTo,
-    existingUserId: user?.id,
+    existingUserId: session?.userId,
   });
 
   const redirectUri = `${appUrl}/api/auth/strava/callback`;

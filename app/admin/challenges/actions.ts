@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { db } from "@/db";
+import { challenges } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { challengeSchema } from "@/lib/validations";
 
@@ -13,9 +15,9 @@ export async function createChallenge(
   _prevState: ChallengeActionState,
   formData: FormData,
 ): Promise<ChallengeActionState> {
-  const { supabase, profile } = await requireAdmin();
+  const { profile } = await requireAdmin();
 
-  if (!profile.company_id) {
+  if (!profile.companyId) {
     return { error: "Set up your company before creating a challenge." };
   }
 
@@ -37,18 +39,19 @@ export async function createChallenge(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const { error } = await supabase.from("challenges").insert({
-    company_id: profile.company_id,
-    title: parsed.data.title,
-    metric_type: parsed.data.metricType,
-    allowed_activities: parsed.data.allowedActivities,
-    target_departments: parsed.data.targetDepartments ?? null,
-    start_date: new Date(parsed.data.startDate).toISOString(),
-    end_date: new Date(parsed.data.endDate).toISOString(),
-  });
-
-  if (error) {
-    return { error: error.message };
+  try {
+    await db.insert(challenges).values({
+      companyId: profile.companyId,
+      title: parsed.data.title,
+      metricType: parsed.data.metricType,
+      allowedActivities: parsed.data.allowedActivities,
+      targetDepartments: parsed.data.targetDepartments ?? null,
+      startDate: new Date(parsed.data.startDate),
+      endDate: new Date(parsed.data.endDate),
+    });
+  } catch (err) {
+    console.error("Failed to create challenge", err);
+    return { error: "Could not create the challenge." };
   }
 
   revalidatePath("/admin/challenges");

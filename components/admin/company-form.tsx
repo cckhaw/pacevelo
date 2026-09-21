@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import { saveCompany, type CompanyActionState } from "@/app/admin/company/actions";
-import type { Database } from "@/types/database";
+import type { Company } from "@/db/schema";
 
 const initialState: CompanyActionState = {};
 
-export function CompanyForm({ company }: { company: Database["public"]["Tables"]["companies"]["Row"] | null }) {
+export function CompanyForm({ company }: { company: Company | null }) {
   const [state, formAction] = useActionState(saveCompany, initialState);
 
   return (
@@ -22,9 +22,9 @@ export function CompanyForm({ company }: { company: Database["public"]["Tables"]
 
       <div className="space-y-2">
         <Label htmlFor="logo">Company logo</Label>
-        {company?.logo_url ? (
+        {company?.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- storage URL, not a static asset
-          <img src={company.logo_url} alt="Current logo" className="mb-2 h-12 w-12 rounded-lg object-contain" />
+          <img src={company.logoUrl} alt="Current logo" className="mb-2 h-12 w-12 rounded-lg object-contain" />
         ) : null}
         <Input id="logo" name="logo" type="file" accept="image/*" />
         <p className="text-xs text-muted-foreground">PNG or JPG, up to 2MB.</p>
@@ -35,7 +35,7 @@ export function CompanyForm({ company }: { company: Database["public"]["Tables"]
         <Input
           id="slackWebhookUrl"
           name="slackWebhookUrl"
-          defaultValue={company?.slack_webhook_url ?? ""}
+          defaultValue={company?.slackWebhookUrl ?? ""}
           placeholder="https://hooks.slack.com/services/…"
         />
         <p className="text-xs text-muted-foreground">

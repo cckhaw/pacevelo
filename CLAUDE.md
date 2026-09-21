@@ -10,16 +10,22 @@ PaceVelo allows HR managers at mid-market companies (100–500 employees) to spi
 ## 2. Tech Stack Requirements
 - **Framework:** Next.js 14+ (App Router, Server Actions, TypeScript, Tailwind CSS)
 - **UI Components:** Shadcn UI + Lucide React icons
-- **Database & Auth:** Supabase (PostgreSQL with Row Level Security, Supabase Auth)
+- **Database:** Neon (serverless PostgreSQL) via Drizzle ORM
+- **Auth:** Custom session (httpOnly JWT cookie + bcrypt for HR admin passwords); authorization enforced in application code rather than database RLS
+- **File storage:** Vercel Blob (company logo uploads)
 - **External Integrations:** Strava API (OAuth 2.0 & Webhooks), Slack Webhooks API
 - **State & Data Fetching:** TanStack React Query (v5)
 - **Deployment & Billing:** Vercel (Hosting) + Stripe (Subscriptions)
 
 ---
 
-## 3. Core Data Schema (PostgreSQL / Supabase)
+## 3. Core Data Schema (PostgreSQL / Neon)
 
-Generate and run migrations for the following schema:
+Generate and run migrations for the following schema. Note: since there is
+no Supabase Auth in this stack, `profiles.id` is its own primary key
+(default `gen_random_uuid()`) rather than a foreign key into `auth.users` —
+see `db/schema.ts` for the actual Drizzle definition, which also adds
+`email`/`password_hash` columns for HR admin login.
 
 ```sql
 -- 1. Companies (Tenants)
@@ -32,10 +38,12 @@ CREATE TABLE companies (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. Profiles (Employees)
+-- 2. Profiles (Employees + HR Admins)
 CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT, -- set for HR admins (email/password login); null for Strava-only employees
   full_name TEXT NOT NULL,
   avatar_url TEXT,
   department TEXT, -- e.g., 'Engineering', 'Sales', 'HR'
