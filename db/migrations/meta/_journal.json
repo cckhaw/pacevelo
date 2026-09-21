@@ -15,6 +15,13 @@
       "when": 1789996576104,
       "tag": "0001_simple_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790032835423,
+      "tag": "0002_dusty_skullbuster",
+      "breakpoints": true
     }
   ]
 }

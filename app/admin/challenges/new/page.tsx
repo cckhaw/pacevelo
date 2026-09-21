@@ -12,6 +12,8 @@ export default async function NewChallengePage() {
     redirect("/admin/company");
   }
 
+  const defaultEmailDomain = profile.email.split("@")[1];
+
   return (
     <div className="min-h-screen bg-secondary">
       <AdminNav fullName={profile.fullName} hasCompany={Boolean(profile.companyId)} />
@@ -22,7 +24,7 @@ export default async function NewChallengePage() {
             <CardDescription>Set the dates, the metric that decides the leaderboard, and who it&apos;s for.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChallengeForm action={createChallenge} />
+            <ChallengeForm action={createChallenge} defaultEmailDomain={defaultEmailDomain} />
           </CardContent>
         </Card>
       </main>

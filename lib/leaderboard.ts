@@ -1,5 +1,12 @@
 import type { ActivityType, MetricType } from "@/db/schema";
 
+export interface RosterMember {
+  profileId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  department: string | null;
+}
+
 export interface LeaderboardActivityRow {
   profileId: string;
   fullName: string;
@@ -41,11 +48,24 @@ function metricValue(
   }
 }
 
+/** Builds individual standings for every enrolled participant, including those with no synced activity yet (shown at zero). */
 export function buildIndividualStandings(
+  roster: RosterMember[],
   rows: LeaderboardActivityRow[],
   metricType: MetricType,
 ): IndividualStanding[] {
   const byProfile = new Map<string, IndividualStanding>();
+
+  for (const member of roster) {
+    byProfile.set(member.profileId, {
+      profileId: member.profileId,
+      fullName: member.fullName,
+      avatarUrl: member.avatarUrl,
+      department: member.department,
+      value: 0,
+      activityCount: 0,
+    });
+  }
 
   for (const row of rows) {
     const value = metricValue(row, metricType);
@@ -54,6 +74,8 @@ export function buildIndividualStandings(
       existing.value += value;
       existing.activityCount += 1;
     } else {
+      // Credited activity for someone no longer in the roster (e.g. left the
+      // company) - still show them rather than silently dropping their score.
       byProfile.set(row.profileId, {
         profileId: row.profileId,
         fullName: row.fullName,
@@ -65,26 +87,36 @@ export function buildIndividualStandings(
     }
   }
 
-  return [...byProfile.values()].sort((a, b) => b.value - a.value);
+  return [...byProfile.values()].sort((a, b) => b.value - a.value || a.fullName.localeCompare(b.fullName));
 }
 
+/** Builds department standings, counting every enrolled participant as a member even before they've logged an activity. */
 export function buildDepartmentStandings(
+  roster: RosterMember[],
   rows: LeaderboardActivityRow[],
   metricType: MetricType,
 ): DepartmentStanding[] {
   const byDept = new Map<string, { value: number; activityCount: number; members: Set<string> }>();
 
-  for (const row of rows) {
-    const department = row.department ?? "Unassigned";
-    const value = metricValue(row, metricType);
-    const existing = byDept.get(department);
-    if (existing) {
-      existing.value += value;
-      existing.activityCount += 1;
-      existing.members.add(row.profileId);
-    } else {
-      byDept.set(department, { value, activityCount: 1, members: new Set([row.profileId]) });
+  function bucket(department: string) {
+    let entry = byDept.get(department);
+    if (!entry) {
+      entry = { value: 0, activityCount: 0, members: new Set() };
+      byDept.set(department, entry);
     }
+    return entry;
+  }
+
+  for (const member of roster) {
+    bucket(member.department ?? "Unassigned").members.add(member.profileId);
+  }
+
+  for (const row of rows) {
+    const value = metricValue(row, metricType);
+    const entry = bucket(row.department ?? "Unassigned");
+    entry.value += value;
+    entry.activityCount += 1;
+    entry.members.add(row.profileId);
   }
 
   return [...byDept.entries()]

@@ -17,9 +17,11 @@ function toDateInputValue(date: Date) {
 export function ChallengeForm({
   action,
   challenge,
+  defaultEmailDomain,
 }: {
   action: (prevState: ChallengeActionState, formData: FormData) => Promise<ChallengeActionState>;
   challenge?: Challenge;
+  defaultEmailDomain?: string;
 }) {
   const [state, formAction] = useActionState(action, initialState);
 
@@ -113,7 +115,7 @@ export function ChallengeForm({
           id="emailDomain"
           name="emailDomain"
           placeholder="acme.com"
-          defaultValue={challenge?.emailDomain ?? ""}
+          defaultValue={challenge?.emailDomain ?? defaultEmailDomain ?? ""}
         />
         <p className="text-xs text-muted-foreground">
           Only @this-domain email addresses can join via this challenge&apos;s invite link. Leave blank to allow any
