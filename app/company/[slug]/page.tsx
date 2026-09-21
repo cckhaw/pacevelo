@@ -1,14 +1,17 @@
 import { notFound } from "next/navigation";
-import { Activity } from "lucide-react";
+import { Activity, CheckCircle2 } from "lucide-react";
 import { LeaderboardView } from "@/components/leaderboard/leaderboard-view";
 import { getLeaderboardData } from "@/lib/leaderboard-data";
 
 export default async function CompanyLeaderboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ welcome?: string }>;
 }) {
   const { slug } = await params;
+  const { welcome } = await searchParams;
   const data = await getLeaderboardData(slug);
 
   if (!data.company) {
@@ -24,6 +27,12 @@ export default async function CompanyLeaderboardPage({
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">
+        {welcome ? (
+          <p className="mb-6 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+            <CheckCircle2 className="h-4 w-4 shrink-0" /> Strava connected! Your workouts will appear here as soon as
+            they sync.
+          </p>
+        ) : null}
         <LeaderboardView slug={slug} initialData={data} />
       </main>
     </div>

@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { Activity } from "lucide-react";
+import { Activity, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
@@ -23,7 +24,7 @@ export default async function JoinCompanyPage({
   }
 
   const stravaHref = `/api/auth/strava?company=${encodeURIComponent(company.slug)}&redirect_to=${encodeURIComponent(
-    "/dashboard",
+    `/company/${company.slug}?welcome=1`,
   )}`;
 
   return (
@@ -56,6 +57,11 @@ export default async function JoinCompanyPage({
           <p className="text-center text-xs text-muted-foreground">
             We only read your activity data (type, distance, time, elevation) — never your Strava password.
           </p>
+          <Button asChild variant="ghost" size="sm" className="w-full">
+            <Link href={`/company/${company.slug}`}>
+              <Trophy className="h-4 w-4" /> Already connected? View the live leaderboard
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </div>
