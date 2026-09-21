@@ -35,11 +35,16 @@ export default async function AdminDashboardPage() {
             <h1 className="text-xl font-semibold">{company?.name}</h1>
             <p className="text-sm text-muted-foreground">Welcome back, {profile.fullName.split(" ")[0]}.</p>
           </div>
-          <Button asChild>
-            <Link href="/admin/challenges/new">
-              <Plus className="h-4 w-4" /> New challenge
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/company/${company?.slug}`}>View leaderboard</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/challenges/new">
+                <Plus className="h-4 w-4" /> New challenge
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

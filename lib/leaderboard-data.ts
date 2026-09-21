@@ -1,0 +1,104 @@
+import "server-only";
+
+import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { db } from "@/db";
+import { activities, challenges, companies, profiles } from "@/db/schema";
+import type { ActivityType } from "@/db/schema";
+import {
+  buildDepartmentStandings,
+  buildIndividualStandings,
+  type DepartmentStanding,
+  type IndividualStanding,
+} from "@/lib/leaderboard";
+
+export interface SerializedChallenge {
+  id: string;
+  title: string;
+  metricType: typeof challenges.$inferSelect.metricType;
+  allowedActivities: ActivityType[];
+  startDate: string;
+  endDate: string;
+}
+
+export interface LeaderboardData {
+  company: { name: string } | null;
+  challenges: SerializedChallenge[];
+  activeChallenge: SerializedChallenge | null;
+  individual: IndividualStanding[];
+  departmental: DepartmentStanding[];
+}
+
+function serializeChallenge(challenge: typeof challenges.$inferSelect): SerializedChallenge {
+  return {
+    id: challenge.id,
+    title: challenge.title,
+    metricType: challenge.metricType,
+    allowedActivities: challenge.allowedActivities,
+    startDate: challenge.startDate.toISOString(),
+    endDate: challenge.endDate.toISOString(),
+  };
+}
+
+export async function getLeaderboardData(
+  slug: string,
+  options: { challengeId?: string; activityType?: ActivityType | null } = {},
+): Promise<LeaderboardData> {
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.slug, slug),
+    columns: { id: true, name: true },
+  });
+  if (!company) {
+    return { company: null, challenges: [], activeChallenge: null, individual: [], departmental: [] };
+  }
+
+  const now = new Date();
+  const activeChallenges = await db.query.challenges.findMany({
+    where: and(
+      eq(challenges.companyId, company.id),
+      eq(challenges.isActive, true),
+      lte(challenges.startDate, now),
+      gte(challenges.endDate, now),
+    ),
+    orderBy: desc(challenges.startDate),
+  });
+
+  const activeChallenge =
+    activeChallenges.find((c) => c.id === options.challengeId) ?? activeChallenges[0] ?? null;
+
+  if (!activeChallenge) {
+    return {
+      company: { name: company.name },
+      challenges: [],
+      activeChallenge: null,
+      individual: [],
+      departmental: [],
+    };
+  }
+
+  const rows = await db
+    .select({
+      profileId: activities.profileId,
+      fullName: profiles.fullName,
+      avatarUrl: profiles.avatarUrl,
+      department: profiles.department,
+      type: activities.type,
+      distanceMeters: activities.distanceMeters,
+      movingTimeSeconds: activities.movingTimeSeconds,
+      elevationGainMeters: activities.elevationGainMeters,
+    })
+    .from(activities)
+    .innerJoin(profiles, eq(activities.profileId, profiles.id))
+    .where(
+      options.activityType
+        ? and(eq(activities.challengeId, activeChallenge.id), eq(activities.type, options.activityType))
+        : eq(activities.challengeId, activeChallenge.id),
+    );
+
+  return {
+    company: { name: company.name },
+    challenges: activeChallenges.map(serializeChallenge),
+    activeChallenge: serializeChallenge(activeChallenge),
+    individual: buildIndividualStandings(rows, activeChallenge.metricType),
+    departmental: buildDepartmentStandings(rows, activeChallenge.metricType),
+  };
+}
