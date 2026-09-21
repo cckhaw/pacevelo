@@ -1,0 +1,30 @@
+import { redirect } from "next/navigation";
+import { AdminNav } from "@/components/admin-nav";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChallengeForm } from "@/components/admin/challenge-form";
+import { requireAdmin } from "@/lib/auth";
+
+export default async function NewChallengePage() {
+  const { profile } = await requireAdmin();
+
+  if (!profile.company_id) {
+    redirect("/admin/company");
+  }
+
+  return (
+    <div className="min-h-screen bg-secondary">
+      <AdminNav fullName={profile.full_name} hasCompany={Boolean(profile.company_id)} />
+      <main className="mx-auto max-w-2xl px-4 py-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Create a challenge</CardTitle>
+            <CardDescription>Set the dates, the metric that decides the leaderboard, and who it&apos;s for.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChallengeForm />
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}
