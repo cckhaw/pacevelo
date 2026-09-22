@@ -30,6 +30,8 @@ export interface AppNavProps {
   /** Company logo to show instead of the PaceVelo mark (leaderboard page only). */
   brandLogoUrl?: string | null;
   brandLabel?: string;
+  /** Page title shown next to the brand mark, in the same row (leaderboard page only). */
+  title?: string;
   signOutAction?: () => Promise<void>;
 }
 
@@ -59,12 +61,13 @@ function menuLinksFor(variant: NavVariant, hasCompany: boolean): NavLinkItem[] {
 
 function SignOutMenuItem({ signOutAction }: { signOutAction: () => Promise<void> }) {
   return (
-    <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-      <form action={signOutAction} className="w-full">
-        <button type="submit" className="flex w-full items-center gap-2">
-          <LogOut className="h-4 w-4" /> Sign out
-        </button>
-      </form>
+    <DropdownMenuItem
+      className="text-destructive focus:text-destructive"
+      onSelect={() => {
+        void signOutAction();
+      }}
+    >
+      <LogOut className="h-4 w-4" /> Sign out
     </DropdownMenuItem>
   );
 }
@@ -76,6 +79,7 @@ export function AppNav({
   brandHref,
   brandLogoUrl,
   brandLabel,
+  title,
   signOutAction,
 }: AppNavProps) {
   const primaryLinks = primaryLinksFor(variant, hasCompany);
@@ -84,22 +88,25 @@ export function AppNav({
 
   return (
     <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-        <Link
-          href={brandHref}
-          className="flex items-center gap-2 opacity-90 transition-opacity hover:opacity-100"
-        >
-          {brandLogoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- storage URL, not a static asset
-            <img
-              src={brandLogoUrl}
-              alt={brandLabel ?? "Company logo"}
-              className="h-8 w-8 rounded-md object-contain"
-            />
-          ) : (
-            <LogoInline markSize={32} />
-          )}
-        </Link>
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href={brandHref}
+            className="flex shrink-0 items-center gap-2 opacity-90 transition-opacity hover:opacity-100"
+          >
+            {brandLogoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- storage URL, not a static asset
+              <img
+                src={brandLogoUrl}
+                alt={brandLabel ?? "Company logo"}
+                className="h-8 w-8 rounded-md object-contain"
+              />
+            ) : (
+              <LogoInline markSize={32} />
+            )}
+          </Link>
+          {title ? <h1 className="truncate font-semibold">{title}</h1> : null}
+        </div>
 
         {/* Desktop: primary links inline, everything else in a compact menu */}
         <div className="hidden items-center gap-4 md:flex">
@@ -134,7 +141,7 @@ export function AppNav({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : variant === "guest" ? (
-            <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/login" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
               Log in
             </Link>
           ) : null}
@@ -163,7 +170,7 @@ export function AppNav({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : variant === "guest" ? (
-            <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/login" className="shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground">
               Log in
             </Link>
           ) : null}

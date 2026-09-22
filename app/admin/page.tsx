@@ -31,16 +31,16 @@ export default async function AdminDashboardPage() {
     <div className="min-h-screen bg-secondary">
       <AppNav variant="admin" fullName={profile.fullName} hasCompany brandHref="/admin" signOutAction={signOutAdmin} />
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold">{company?.name}</h1>
             <p className="text-sm text-muted-foreground">Welcome back, {profile.fullName.split(" ")[0]}.</p>
           </div>
           <div className="flex gap-2">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="flex-1 sm:flex-none">
               <Link href={`/company/${company?.slug}`}>View leaderboard</Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="flex-1 sm:flex-none">
               <Link href="/admin/challenges/new">
                 <Plus className="h-4 w-4" /> New challenge
               </Link>

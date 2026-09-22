@@ -43,10 +43,10 @@ export default async function CompanyLeaderboardPage({
         brandHref={`/company/${slug}`}
         brandLogoUrl={data.company.logoUrl}
         brandLabel={data.company.name}
+        title={`${data.company.name} Leaderboard`}
         signOutAction={navVariant === "admin" ? signOutAdmin : navVariant === "employee" ? signOut : undefined}
       />
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="mb-6 text-xl font-semibold">{data.company.name} Leaderboard</h1>
         {welcome ? (
           <p className="mb-6 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
             <CheckCircle2 className="h-4 w-4 shrink-0" /> Strava connected! Your workouts will appear here as soon as
