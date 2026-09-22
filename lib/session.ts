@@ -33,7 +33,13 @@ export async function createSession(payload: SessionPayload) {
     path: "/",
   });
 
-  await db.insert(loginEvents).values({ profileId: payload.userId, role: payload.role });
+  try {
+    await db.insert(loginEvents).values({ profileId: payload.userId, role: payload.role });
+  } catch (err) {
+    // Visit-frequency logging is a nice-to-have for the back office - never
+    // let a failure here (e.g. a pending migration) break sign-in itself.
+    console.error("Failed to record login event", err);
+  }
 }
 
 /** Reads and verifies the session cookie, if any. Returns null when absent/invalid/expired. */

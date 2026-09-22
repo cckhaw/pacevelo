@@ -72,11 +72,17 @@ export async function GET(request: NextRequest) {
 
   const existingAthleteProfile = await db.query.profiles.findFirst({
     where: eq(profiles.stravaAthleteId, athlete.id),
-    columns: { id: true, companyId: true, role: true, email: true },
+    columns: { id: true, companyId: true, role: true, email: true, passwordHash: true },
   });
 
   if (existingAthleteProfile && state.existingUserId && existingAthleteProfile.id !== state.existingUserId) {
-    return errorRedirect(appUrl, "strava_account_already_linked", maskEmail(existingAthleteProfile.email));
+    // A Strava-only account (created by connecting Strava directly, without
+    // ever setting a password) can't be signed into with email+password -
+    // pick the error copy that tells the person the right way to get in.
+    const errorCode = existingAthleteProfile.passwordHash
+      ? "strava_account_already_linked_with_password"
+      : "strava_account_already_linked_no_password";
+    return errorRedirect(appUrl, errorCode, maskEmail(existingAthleteProfile.email));
   }
 
   let targetUserId: string;
