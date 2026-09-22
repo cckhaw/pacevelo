@@ -13,8 +13,15 @@ import { COUNTRY_CALLING_CODES } from "@/lib/countries";
 const initialState: ContactActionState = {};
 
 // Client-side gate for fast feedback only - lib/validations.ts#contactSchema
-// (via emailSchema) is the actual source of truth, re-checked server-side.
+// (via emailSchema/phone's regex) is the actual source of truth, re-checked
+// server-side.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// What's allowed in the local phone number field - digits plus the
+// punctuation people commonly format numbers with (space, hyphen,
+// parentheses) - no letters. Filtered live in onChange, not just checked on
+// submit, so a letter simply never appears in the field.
+const PHONE_ALLOWED_CHARS = /[^0-9\s\-()]/g;
 
 export function ContactForm() {
   const [state, formAction] = useActionState(submitContactEnquiry, initialState);
@@ -25,6 +32,7 @@ export function ContactForm() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneCountryName, setPhoneCountryName] = useState(COUNTRY_CALLING_CODES[0].name);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState<string | null>(null);
 
@@ -62,6 +70,10 @@ export function ContactForm() {
 
     if (!EMAIL_PATTERN.test(email.trim())) {
       setEmailError("Enter a valid email address");
+      hasError = true;
+    }
+    if (!/\d/.test(phoneNumber)) {
+      setPhoneError("Enter a phone number");
       hasError = true;
     }
     if (!message.trim()) {
@@ -115,14 +127,20 @@ export function ContactForm() {
           <Input
             id="phoneNumber"
             type="tel"
+            inputMode="tel"
             required
             autoComplete="tel-national"
             placeholder="12-345 6789"
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            onChange={(e) => {
+              setPhoneNumber(e.target.value.replace(PHONE_ALLOWED_CHARS, ""));
+              setPhoneError(null);
+            }}
+            aria-invalid={phoneError ? true : undefined}
             className="flex-1"
           />
         </div>
+        {phoneError ? <p className="text-sm text-destructive">{phoneError}</p> : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="message">Message</Label>

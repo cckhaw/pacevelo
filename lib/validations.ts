@@ -43,7 +43,15 @@ export const emailDomainSchema = z
 export const contactSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(120),
   email: emailSchema,
-  phone: z.string().trim().min(6, "Enter a valid phone number").max(30),
+  // Combined "+<dial code> <local number>" from the contact form's country
+  // dropdown + number input - digits, spaces, hyphens and parentheses only,
+  // no letters.
+  phone: z
+    .string()
+    .trim()
+    .min(6, "Enter a valid phone number")
+    .max(30)
+    .regex(/^\+[0-9][0-9\s\-()]*$/, "Phone number can only contain numbers"),
   message: z.string().trim().min(10, "Tell us a bit more (at least 10 characters)").max(2000),
 });
 
