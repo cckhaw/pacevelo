@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { SubmitButton } from "@/components/submit-button";
 import { resetUserPassword, type ResetUserPasswordState } from "@/app/backoffice/companies/[id]/users/actions";
+import { PASSWORD_REQUIREMENTS_HINT } from "@/lib/validations";
 
 const initialState: ResetUserPasswordState = {};
 
@@ -57,7 +58,8 @@ export function UserResetPasswordDialog({
         <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="newPassword">New password</Label>
-            <Input id="newPassword" name="newPassword" type="password" required minLength={8} autoComplete="new-password" />
+            <Input id="newPassword" name="newPassword" type="password" required minLength={12} autoComplete="new-password" />
+            <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_HINT}</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm password</Label>
@@ -66,7 +68,7 @@ export function UserResetPasswordDialog({
               name="confirmPassword"
               type="password"
               required
-              minLength={8}
+              minLength={12}
               autoComplete="new-password"
             />
           </div>
