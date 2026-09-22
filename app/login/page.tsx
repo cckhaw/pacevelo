@@ -36,7 +36,7 @@ export default async function LoginPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-secondary">
-      <header className="flex items-center justify-end px-4 py-4 sm:px-6">
+      <header className="flex items-center px-4 py-4 sm:px-6">
         <Link href="/">
           <LogoInline markSize={32} />
         </Link>
