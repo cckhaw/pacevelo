@@ -122,6 +122,14 @@ export default function TermsOfServicePage() {
         </p>
       </LegalSection>
 
+      <LegalSection heading="Governing law">
+        <p>
+          These Terms are governed by the laws of Malaysia, without regard to its conflict-of-law principles. Any
+          dispute arising out of or relating to these Terms or the Service will be subject to the exclusive
+          jurisdiction of the courts of Malaysia.
+        </p>
+      </LegalSection>
+
       <LegalSection heading="Changes to these terms">
         <p>
           We may update these Terms from time to time. If we make material changes, we&apos;ll update the &quot;Last
