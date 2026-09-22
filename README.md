@@ -111,9 +111,10 @@ the `dataTypes/steps/dataPoints` fetch), `state.ts` (signed OAuth state),
 
 **Caveats worth knowing before relying on this in production:**
 
-- The Google Health API's exact steps scope string and its
-  `dataTypes/steps/dataPoints` request shape are inferred from available
-  documentation, not confirmed against a live call — verify both once you
+- The OAuth scope (`googlehealth.activity_and_fitness.readonly`) is
+  confirmed, but the `dataTypes/steps/dataPoints` request/response shape in
+  `lib/google-health/client.ts` is still inferred from available
+  documentation, not confirmed against a live call — verify it once you
   have real Google Cloud OAuth credentials to test against.
 - New Google OAuth clients are capped at **100 test users** until Google
   verifies the app, which likely requires a security review for a
