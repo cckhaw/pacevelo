@@ -152,6 +152,15 @@ export async function verifyChallengeOtpAndJoin(
 
   const destination = `/company/${challenge.company.slug}?welcome=1`;
 
+  if (challenge.dataSource === "google_health") {
+    if (profile.googleHealthUserId) {
+      redirect(destination);
+    }
+    redirect(
+      `/api/auth/google-health?company=${encodeURIComponent(challenge.company.slug)}&redirect_to=${encodeURIComponent(destination)}`,
+    );
+  }
+
   if (profile.stravaAthleteId) {
     redirect(destination);
   }

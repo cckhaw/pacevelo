@@ -77,6 +77,43 @@ curl "https://www.strava.com/api/v3/push_subscriptions?client_id=$STRAVA_CLIENT_
 curl -X DELETE "https://www.strava.com/api/v3/push_subscriptions/<id>?client_id=$STRAVA_CLIENT_ID&client_secret=$STRAVA_CLIENT_SECRET"
 ```
 
+## Phase 3: Google Health (steps) as an alternate data source
+
+Each challenge picks **one** data source at creation and can't change it
+afterward:
+
+- **Strava** (default) — ranked by distance/active time/elevation from
+  synced Run/Ride/Walk activities, as in Phases 1–2.
+- **Google Health** — ranked by total steps. Participants connect their
+  Google account (`/api/auth/google-health` →
+  `/api/auth/google-health/callback`, mirroring the Strava OAuth flow) and
+  their phone's step counter does the rest via the [Google Health
+  API](https://developers.google.com/health).
+
+Google Health has no webhook push like Strava's, so step data is pulled
+instead:
+
+- `app/api/cron/sync-google-health` — a Vercel Cron job (see `vercel.json`,
+  runs every 6 hours) that syncs every connected profile's recent daily
+  step totals into `step_entries`.
+- A "Sync now" button on the employee dashboard triggers the same pull
+  on demand for a single profile, for whenever someone doesn't want to
+  wait for the next cron run.
+
+`lib/google-health/` mirrors `lib/strava/`'s shape: `client.ts` (OAuth +
+the `dataTypes/steps/dataPoints` fetch), `state.ts` (signed OAuth state),
+`tokens.ts` (access token refresh), `sync.ts` (`syncStepsForProfile`).
+
+**Caveats worth knowing before relying on this in production:**
+
+- The Google Health API's exact steps scope string and its
+  `dataTypes/steps/dataPoints` request shape are inferred from available
+  documentation, not confirmed against a live call — verify both once you
+  have real Google Cloud OAuth credentials to test against.
+- New Google OAuth clients are capped at **100 test users** until Google
+  verifies the app, which likely requires a security review for a
+  health-data scope. Budget time for that before a company-wide rollout.
+
 ## Getting started
 
 1. **Create a Neon database.** Either via [neon.tech](https://neon.tech)
@@ -94,6 +131,11 @@ curl -X DELETE "https://www.strava.com/api/v3/push_subscriptions/<id>?client_id=
    - `STRAVA_WEBHOOK_VERIFY_TOKEN` — a random string you choose
      (`openssl rand -hex 20`); see "Registering the Strava webhook
      subscription" below.
+   - (Optional, only needed for Google Health challenges) a Google Cloud
+     OAuth 2.0 client's ID/secret as `GOOGLE_HEALTH_CLIENT_ID` /
+     `GOOGLE_HEALTH_CLIENT_SECRET`, with redirect URI
+     `{NEXT_PUBLIC_APP_URL}/api/auth/google-health/callback`, and a
+     `CRON_SECRET` for `/api/cron/sync-google-health` — see "Phase 3" above.
 3. Run the schema migration against your Neon database:
    ```bash
    npm run db:migrate
@@ -111,10 +153,16 @@ curl -X DELETE "https://www.strava.com/api/v3/push_subscriptions/<id>?client_id=
 - `lib/auth.ts` — `requireAdmin()` page guard used by every `/admin` route.
 - `lib/strava/` — Strava OAuth token exchange, refresh, state encoding, and
   webhook event processing (`webhook-processing.ts`).
+- `lib/google-health/` — the Google Health equivalent (OAuth, token refresh,
+  daily step sync); no webhook, so `sync.ts` is pulled by a cron instead.
 - `lib/leaderboard.ts` / `lib/leaderboard-data.ts` — standings aggregation,
-  shared by the leaderboard page (SSR) and its polling API route.
+  shared by the leaderboard page (SSR) and its polling API route; branches
+  on a challenge's `dataSource` between Strava activities and Google Health
+  step entries.
 - `app/api/auth/strava/` — the OAuth route handlers.
+- `app/api/auth/google-health/` — the Google Health OAuth route handlers.
 - `app/api/webhooks/strava/` — the Strava push-subscription webhook.
+- `app/api/cron/sync-google-health/` — periodic step sync (Vercel Cron).
 - `app/api/company/[slug]/leaderboard/` — public leaderboard data endpoint.
 - `app/join/[slug]/` — employee invite landing page.
 - `app/company/[slug]/` — public leaderboard page.

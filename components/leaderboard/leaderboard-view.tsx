@@ -24,6 +24,9 @@ function timeAgoLabel(secondsAgo: number) {
 }
 
 function formatValue(value: number, metricType: keyof typeof METRIC_TYPE_LABELS) {
+  if (metricType === "total_steps") {
+    return `${Math.round(value).toLocaleString()} steps`;
+  }
   const rounded = metricType === "active_time_mins" ? Math.round(value) : Math.round(value * 10) / 10;
   const unit = metricType === "total_distance_km" ? "km" : metricType === "active_time_mins" ? "min" : "m";
   return `${rounded.toLocaleString()} ${unit}`;
@@ -151,16 +154,18 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
         </div>
       </div>
 
-      <Tabs value={activityType} onValueChange={(v) => setActivityType(v as ActivityType | "all")}>
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          {view.activeChallenge.allowedActivities.map((activity) => (
-            <TabsTrigger key={activity} value={activity}>
-              {activity}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {view.activeChallenge.allowedActivities.length > 0 ? (
+        <Tabs value={activityType} onValueChange={(v) => setActivityType(v as ActivityType | "all")}>
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            {view.activeChallenge.allowedActivities.map((activity) => (
+              <TabsTrigger key={activity} value={activity}>
+                {activity}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

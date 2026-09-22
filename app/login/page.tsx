@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/login-form";
 import { LogoMark } from "@/components/logo";
-import { signOutAndReconnectStrava } from "@/app/login/actions";
+import { signOutAndReconnectStrava, signOutAndReconnectGoogleHealth } from "@/app/login/actions";
 
 const ERROR_MESSAGES: Record<string, (hint?: string) => string> = {
   strava_access_denied: () => "You cancelled the Strava connection. You can try again anytime.",
@@ -14,10 +14,16 @@ const ERROR_MESSAGES: Record<string, (hint?: string) => string> = {
     `That Strava account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""}. If that's you, log in below with that account's email and password instead. If you meant to connect a different Strava account, disconnect PaceVelo from the other one first in Strava's settings (My Apps).`,
   strava_account_already_linked_no_password: (hint) =>
     `That Strava account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""} that has no password set. If that's you, use the button below to sign into that account directly. If you meant to connect a different Strava account, disconnect PaceVelo from the other one first in Strava's settings (My Apps).`,
+  google_health_access_denied: () => "You cancelled the Google Health connection. You can try again anytime.",
+  google_health_exchange_failed: () => "We couldn't verify your Google Health account. Please try again.",
+  google_health_account_already_linked_with_password: (hint) =>
+    `That Google Health account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""}. If that's you, log in below with that account's email and password instead. If you meant to connect a different Google Health account, disconnect PaceVelo from that Google account's connected apps first.`,
+  google_health_account_already_linked_no_password: (hint) =>
+    `That Google Health account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""} that has no password set. If that's you, use the button below to sign into that account directly. If you meant to connect a different Google Health account, disconnect PaceVelo from that Google account's connected apps first.`,
   employee_limit_reached: () => "Your company has reached its employee limit. Ask your HR admin to contact PaceVelo.",
   user_creation_failed: () => "We couldn't create your PaceVelo account. Please try again.",
-  profile_update_failed: () => "We couldn't save your Strava connection. Please try again.",
-  session_creation_failed: () => "We connected Strava but couldn't sign you in. Please try again.",
+  profile_update_failed: () => "We couldn't save your connection. Please try again.",
+  session_creation_failed: () => "We connected your account but couldn't sign you in. Please try again.",
 };
 
 export default async function LoginPage({
@@ -47,6 +53,14 @@ export default async function LoginPage({
             <form action={signOutAndReconnectStrava}>
               <Button type="submit" variant="outline" className="w-full">
                 Sign out & connect with Strava
+              </Button>
+            </form>
+          ) : null}
+
+          {error === "google_health_account_already_linked_no_password" ? (
+            <form action={signOutAndReconnectGoogleHealth}>
+              <Button type="submit" variant="outline" className="w-full">
+                Sign out & connect with Google Health
               </Button>
             </form>
           ) : null}

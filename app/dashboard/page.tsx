@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { CheckCircle2, Trophy, Watch } from "lucide-react";
+import { CheckCircle2, Footprints, Trophy, Watch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +9,12 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { challengeParticipants, profiles } from "@/db/schema";
 import { getValidStravaAccessToken } from "@/lib/strava/tokens";
+import { getValidGoogleHealthAccessToken } from "@/lib/google-health/tokens";
 import { isPast } from "@/lib/time";
 import { signOut } from "@/app/login/actions";
 import { DisconnectStravaButton } from "@/components/disconnect-strava-button";
+import { DisconnectGoogleHealthButton } from "@/components/disconnect-google-health-button";
+import { SyncGoogleHealthButton } from "@/components/sync-google-health-button";
 import { AppNav } from "@/components/nav/app-nav";
 
 export default async function DashboardPage({
@@ -51,13 +54,28 @@ export default async function DashboardPage({
     }
   }
 
+  let googleHealthStatus: "connected" | "error" = "error";
+  if (profile.googleHealthUserId) {
+    try {
+      await getValidGoogleHealthAccessToken(profile.id);
+      googleHealthStatus = "connected";
+    } catch {
+      googleHealthStatus = "error";
+    }
+  }
+
   return (
     <div className="min-h-screen bg-secondary">
       <AppNav variant="employee" fullName={profile.fullName} brandHref="/dashboard" signOutAction={signOut} />
       <div className="mx-auto max-w-xl px-4 py-10">
         {welcome ? (
           <p className="mb-6 rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-            Welcome to PaceVelo! Your Strava account is connected.
+            Welcome to PaceVelo!{" "}
+            {tokenStatus === "connected"
+              ? "Your Strava account is connected."
+              : googleHealthStatus === "connected"
+                ? "Your Google Health account is connected."
+                : "Connect Strava or Google Health below to start syncing."}
           </p>
         ) : null}
 
@@ -95,6 +113,35 @@ export default async function DashboardPage({
             {tokenStatus !== "connected" ? (
               <Button asChild className="w-full bg-[#FC4C02] text-white hover:bg-[#e04502]">
                 <a href={`/api/auth/strava?redirect_to=${encodeURIComponent("/dashboard")}`}>Connect Strava</a>
+              </Button>
+            ) : null}
+
+            <div className="flex items-center justify-between rounded-md border px-3 py-2">
+              <span className="flex items-center gap-2 text-sm">
+                <Footprints className="h-4 w-4" /> Google Health connection
+              </span>
+              <div className="flex items-center gap-2">
+                {googleHealthStatus === "connected" ? (
+                  <Badge className="gap-1 bg-primary text-primary-foreground">
+                    <CheckCircle2 className="h-3 w-3" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Not connected</Badge>
+                )}
+                {profile.googleHealthUserId ? (
+                  <>
+                    <SyncGoogleHealthButton />
+                    <DisconnectGoogleHealthButton />
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            {googleHealthStatus !== "connected" ? (
+              <Button asChild variant="outline" className="w-full">
+                <a href={`/api/auth/google-health?redirect_to=${encodeURIComponent("/dashboard")}`}>
+                  Connect Google Health
+                </a>
               </Button>
             ) : null}
           </CardContent>

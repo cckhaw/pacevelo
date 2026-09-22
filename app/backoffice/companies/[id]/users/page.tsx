@@ -44,7 +44,9 @@ export default async function BackofficeCompanyUsersPage({ params }: { params: P
         <Card>
           <CardHeader>
             <CardTitle>All users</CardTitle>
-            <CardDescription>Edit details, reset a password, disconnect Strava, or delete an account.</CardDescription>
+            <CardDescription>
+              Edit details, reset a password, disconnect Strava/Google Health, or delete an account.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {users.length === 0 ? (
@@ -62,6 +64,11 @@ export default async function BackofficeCompanyUsersPage({ params }: { params: P
                         {user.stravaConnected ? (
                           <Badge variant="outline" className="gap-1">
                             <CheckCircle2 className="h-3 w-3" /> Strava
+                          </Badge>
+                        ) : null}
+                        {user.googleHealthConnected ? (
+                          <Badge variant="outline" className="gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Google Health
                           </Badge>
                         ) : null}
                       </div>

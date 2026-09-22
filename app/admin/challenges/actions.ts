@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, count, eq, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { challenges, companies } from "@/db/schema";
-import type { ActivityType } from "@/db/schema";
+import type { ActivityType, ChallengeDataSource } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { challengeSchema } from "@/lib/validations";
 
@@ -58,6 +58,7 @@ async function findOverlappingChallenges(
   companyId: string,
   startDate: Date,
   endDate: Date,
+  dataSource: ChallengeDataSource,
   allowedActivities: ActivityType[],
   excludeChallengeId?: string,
 ) {
@@ -72,7 +73,17 @@ async function findOverlappingChallenges(
     ),
   });
 
-  return candidates.filter((c) => c.allowedActivities.some((activity) => allowedActivities.includes(activity)));
+  return candidates.filter((c) => {
+    // A Strava challenge and a Google Health challenge never double-count
+    // the same workout - they're scored from entirely separate telemetry.
+    // Two overlapping Google Health challenges, on the other hand, always
+    // double-count a shared participant's steps (daily totals aren't split
+    // by activity type the way Strava's are), regardless of allowedActivities.
+    if (dataSource === "google_health" || c.dataSource === "google_health") {
+      return c.dataSource === dataSource;
+    }
+    return c.allowedActivities.some((activity) => allowedActivities.includes(activity));
+  });
 }
 
 function parseChallengeForm(formData: FormData) {
@@ -83,6 +94,7 @@ function parseChallengeForm(formData: FormData) {
 
   return challengeSchema.safeParse({
     title: formData.get("title"),
+    dataSource: formData.get("dataSource"),
     metricType: formData.get("metricType"),
     allowedActivities: formData.getAll("allowedActivities").map(String),
     startDate: formData.get("startDate"),
@@ -121,12 +133,17 @@ export async function createChallenge(
       profile.companyId,
       startDate,
       endDate,
+      parsed.data.dataSource,
       parsed.data.allowedActivities,
     );
     if (overlapping.length > 0) {
       const names = overlapping.map((c) => `"${c.title}"`).join(", ");
+      const reason =
+        parsed.data.dataSource === "google_health"
+          ? "both rank by Google Health steps"
+          : `also allows ${overlapping[0].allowedActivities.join("/")}`;
       return {
-        warning: `This overlaps with ${names}, which also allows ${overlapping[0].allowedActivities.join("/")} in the same window - a participant in both would have the same workout counted twice. Create it anyway?`,
+        warning: `This overlaps with ${names}, which ${reason} in the same window - a participant in both would have the same workout counted twice. Create it anyway?`,
       };
     }
   }
@@ -135,6 +152,7 @@ export async function createChallenge(
     await db.insert(challenges).values({
       companyId: profile.companyId,
       title: parsed.data.title,
+      dataSource: parsed.data.dataSource,
       metricType: parsed.data.metricType,
       allowedActivities: parsed.data.allowedActivities,
       targetDepartments: parsed.data.targetDepartments ?? null,
@@ -187,13 +205,18 @@ export async function updateChallenge(
       profile.companyId,
       startDate,
       endDate,
+      existing.dataSource,
       parsed.data.allowedActivities,
       challengeId,
     );
     if (overlapping.length > 0) {
       const names = overlapping.map((c) => `"${c.title}"`).join(", ");
+      const reason =
+        existing.dataSource === "google_health"
+          ? "both rank by Google Health steps"
+          : `also allows ${overlapping[0].allowedActivities.join("/")}`;
       return {
-        warning: `This overlaps with ${names}, which also allows ${overlapping[0].allowedActivities.join("/")} in the same window - a participant in both would have the same workout counted twice. Save anyway?`,
+        warning: `This overlaps with ${names}, which ${reason} in the same window - a participant in both would have the same workout counted twice. Save anyway?`,
       };
     }
   }
@@ -203,6 +226,8 @@ export async function updateChallenge(
       .update(challenges)
       .set({
         title: parsed.data.title,
+        // dataSource is fixed at creation - the form doesn't let it change,
+        // so it's deliberately left out of this update.
         metricType: parsed.data.metricType,
         allowedActivities: parsed.data.allowedActivities,
         targetDepartments: parsed.data.targetDepartments ?? null,
