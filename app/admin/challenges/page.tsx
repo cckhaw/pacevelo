@@ -87,11 +87,15 @@ export default async function ChallengesPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                    {challenge.allowedActivities.map((activity) => (
-                      <Badge key={activity} variant="outline">
-                        {activity}
-                      </Badge>
-                    ))}
+                    {challenge.dataSource === "google_health" ? (
+                      <Badge variant="outline">Google Health</Badge>
+                    ) : (
+                      challenge.allowedActivities.map((activity) => (
+                        <Badge key={activity} variant="outline">
+                          {activity}
+                        </Badge>
+                      ))
+                    )}
                     {challenge.targetDepartments?.length ? (
                       <span className="ml-2">Targeting: {challenge.targetDepartments.join(", ")}</span>
                     ) : (

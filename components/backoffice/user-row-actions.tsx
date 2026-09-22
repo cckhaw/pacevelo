@@ -6,7 +6,7 @@ import { Trash2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserEditDialog } from "@/components/backoffice/user-edit-dialog";
 import { UserResetPasswordDialog } from "@/components/backoffice/user-reset-password-dialog";
-import { disconnectUserStrava, deleteUser } from "@/app/backoffice/companies/[id]/users/actions";
+import { disconnectUserStrava, disconnectUserGoogleHealth, deleteUser } from "@/app/backoffice/companies/[id]/users/actions";
 import type { CompanyUserRow } from "@/lib/backoffice-data";
 
 export function UserRowActions({ companyId, user }: { companyId: string; user: CompanyUserRow }) {
@@ -21,6 +21,20 @@ export function UserRowActions({ companyId, user }: { companyId: string; user: C
     setError(null);
     startTransition(async () => {
       const result = await disconnectUserStrava(user.id, companyId);
+      if (result.error) setError(result.error);
+      else router.refresh();
+    });
+  }
+
+  function handleDisconnectGoogleHealth() {
+    if (
+      !window.confirm(`Disconnect Google Health from ${user.fullName}? They'll need to reconnect to sync steps again.`)
+    ) {
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await disconnectUserGoogleHealth(user.id, companyId);
       if (result.error) setError(result.error);
       else router.refresh();
     });
@@ -50,6 +64,11 @@ export function UserRowActions({ companyId, user }: { companyId: string; user: C
         {user.stravaConnected ? (
           <Button type="button" variant="outline" size="sm" onClick={handleDisconnectStrava} disabled={isPending}>
             <Unlink className="h-3.5 w-3.5" /> Disconnect Strava
+          </Button>
+        ) : null}
+        {user.googleHealthConnected ? (
+          <Button type="button" variant="outline" size="sm" onClick={handleDisconnectGoogleHealth} disabled={isPending}>
+            <Unlink className="h-3.5 w-3.5" /> Disconnect Google Health
           </Button>
         ) : null}
         <Button

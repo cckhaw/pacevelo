@@ -43,7 +43,8 @@ export default async function JoinChallengePage({
           )}
           <CardTitle className="text-xl">{challenge.title}</CardTitle>
           <CardDescription>
-            {challenge.company.name} · Verify your work email, set a password, then connect Strava to join.
+            {challenge.company.name} · Verify your work email, set a password, then connect{" "}
+            {challenge.dataSource === "google_health" ? "Google Health" : "Strava"} to join.
           </CardDescription>
         </CardHeader>
         <CardContent>

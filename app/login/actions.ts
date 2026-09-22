@@ -54,3 +54,9 @@ export async function signOutAndReconnectStrava() {
   await clearSession();
   redirect("/api/auth/strava");
 }
+
+/** Same as signOutAndReconnectStrava, for the Google Health equivalent conflict. */
+export async function signOutAndReconnectGoogleHealth() {
+  await clearSession();
+  redirect("/api/auth/google-health");
+}

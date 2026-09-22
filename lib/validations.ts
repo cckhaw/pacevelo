@@ -29,13 +29,15 @@ export const companySchema = z.object({
     .transform((v) => (v ? v : null)),
 });
 
-export const METRIC_TYPES = ["total_distance_km", "active_time_mins", "elevation_m"] as const;
+export const METRIC_TYPES = ["total_distance_km", "active_time_mins", "elevation_m", "total_steps"] as const;
 export const ACTIVITY_TYPES = ["Run", "Ride", "Walk"] as const;
+export const CHALLENGE_DATA_SOURCES = ["strava", "google_health"] as const;
 
 export const METRIC_TYPE_LABELS: Record<(typeof METRIC_TYPES)[number], string> = {
   total_distance_km: "Total distance (km)",
   active_time_mins: "Active time (mins)",
   elevation_m: "Elevation gain (m)",
+  total_steps: "Total steps",
 };
 
 /**
@@ -58,8 +60,9 @@ export function allowedMetricTypesFor(
 export const challengeSchema = z
   .object({
     title: z.string().trim().min(3, "Give the challenge a title").max(160),
+    dataSource: z.enum(CHALLENGE_DATA_SOURCES).default("strava"),
     metricType: z.enum(METRIC_TYPES),
-    allowedActivities: z.array(z.enum(ACTIVITY_TYPES)).min(1, "Select at least one activity type"),
+    allowedActivities: z.array(z.enum(ACTIVITY_TYPES)).default([]),
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().min(1, "End date is required"),
     targetDepartments: z.array(z.string().trim().min(1)).optional(),
@@ -69,9 +72,26 @@ export const challengeSchema = z
     message: "End date must be after the start date",
     path: ["endDate"],
   })
-  .refine((data) => allowedMetricTypesFor(data.allowedActivities).includes(data.metricType), {
-    message: "That leaderboard metric isn't available for the selected activities.",
-    path: ["metricType"],
+  .superRefine((data, ctx) => {
+    if (data.dataSource === "strava") {
+      if (data.allowedActivities.length === 0) {
+        ctx.addIssue({ code: "custom", message: "Select at least one activity type", path: ["allowedActivities"] });
+        return;
+      }
+      if (!allowedMetricTypesFor(data.allowedActivities).includes(data.metricType)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "That leaderboard metric isn't available for the selected activities.",
+          path: ["metricType"],
+        });
+      }
+    } else if (data.metricType !== "total_steps") {
+      ctx.addIssue({
+        code: "custom",
+        message: "Google Health challenges are always ranked by total steps.",
+        path: ["metricType"],
+      });
+    }
   });
 
 export type CompanyInput = z.infer<typeof companySchema>;

@@ -8,6 +8,8 @@ import { requireBackoffice } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { getValidStravaAccessToken } from "@/lib/strava/tokens";
 import { deauthorizeStrava } from "@/lib/strava/client";
+import { getValidGoogleHealthAccessToken } from "@/lib/google-health/tokens";
+import { revokeGoogleHealthToken } from "@/lib/google-health/client";
 import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 
 async function loadUserInCompany(profileId: string, companyId: string) {
@@ -115,6 +117,37 @@ export async function disconnectUserStrava(profileId: string, companyId: string)
   await db
     .update(profiles)
     .set({ stravaAthleteId: null, stravaAccessToken: null, stravaRefreshToken: null, stravaTokenExpiresAt: null })
+    .where(eq(profiles.id, profileId));
+
+  revalidateUsers(companyId);
+  return {};
+}
+
+export async function disconnectUserGoogleHealth(profileId: string, companyId: string): Promise<{ error?: string }> {
+  await requireBackoffice();
+
+  const user = await loadUserInCompany(profileId, companyId);
+  if (!user) return { error: "User not found in this company." };
+  if (!user.googleHealthUserId) return { error: "No Google Health account is connected." };
+
+  try {
+    const accessToken = await getValidGoogleHealthAccessToken(profileId);
+    await revokeGoogleHealthToken(accessToken);
+  } catch (err) {
+    // Still unlink locally even if revoking with Google fails (e.g. the
+    // token was already invalid) - the important part is freeing this
+    // Google account up for a different profile to connect.
+    console.error("Failed to revoke Google Health access during admin disconnect", err);
+  }
+
+  await db
+    .update(profiles)
+    .set({
+      googleHealthUserId: null,
+      googleHealthAccessToken: null,
+      googleHealthRefreshToken: null,
+      googleHealthTokenExpiresAt: null,
+    })
     .where(eq(profiles.id, profileId));
 
   revalidateUsers(companyId);

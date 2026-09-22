@@ -159,6 +159,7 @@ export interface CompanyUserRow {
   role: ProfileRole;
   department: string | null;
   stravaConnected: boolean;
+  googleHealthConnected: boolean;
   createdAt: Date;
 }
 
@@ -173,6 +174,7 @@ export async function getCompanyUsers(companyId: string): Promise<CompanyUserRow
       role: true,
       department: true,
       stravaAthleteId: true,
+      googleHealthUserId: true,
       createdAt: true,
     },
   });
@@ -184,6 +186,7 @@ export async function getCompanyUsers(companyId: string): Promise<CompanyUserRow
     role: r.role,
     department: r.department,
     stravaConnected: r.stravaAthleteId != null,
+    googleHealthConnected: r.googleHealthUserId != null,
     createdAt: r.createdAt,
   }));
 }

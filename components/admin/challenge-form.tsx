@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import type { ChallengeActionState } from "@/app/admin/challenges/actions";
 import { ACTIVITY_TYPES, METRIC_TYPES, METRIC_TYPE_LABELS, allowedMetricTypesFor } from "@/lib/validations";
-import type { ActivityType, Challenge, MetricType } from "@/db/schema";
+import type { ActivityType, Challenge, ChallengeDataSource, MetricType } from "@/db/schema";
 
 const initialState: ChallengeActionState = {};
 
@@ -24,13 +24,15 @@ export function ChallengeForm({
   defaultEmailDomain?: string;
 }) {
   const [state, formAction] = useActionState(action, initialState);
+  const [dataSource, setDataSource] = useState<ChallengeDataSource>(challenge?.dataSource ?? "strava");
   const [selectedActivities, setSelectedActivities] = useState<ActivityType[]>(
     challenge?.allowedActivities ?? [...ACTIVITY_TYPES],
   );
   const [metricTypePreference, setMetricTypePreference] = useState<MetricType>(
     challenge?.metricType ?? "total_distance_km",
   );
-  const availableMetrics = allowedMetricTypesFor(selectedActivities);
+  const availableMetrics: MetricType[] =
+    dataSource === "google_health" ? ["total_steps"] : allowedMetricTypesFor(selectedActivities);
   // Derived during render rather than synced via effect: whichever metric the
   // admin last picked, clamped to whatever the current activity selection
   // still allows, so an invalid combination can never be submitted.
@@ -77,44 +79,96 @@ export function ChallengeForm({
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Allowed activities</legend>
-        <div className="flex gap-4">
-          {ACTIVITY_TYPES.map((activity) => (
-            <label key={activity} className="flex items-center gap-2 text-sm">
+        <legend className="text-sm font-medium">Data source</legend>
+        {challenge ? (
+          <>
+            <input type="hidden" name="dataSource" value={dataSource} />
+            <p className="text-sm">{dataSource === "google_health" ? "Google Health (steps)" : "Strava"}</p>
+            <p className="text-xs text-muted-foreground">The data source can&apos;t be changed after a challenge is created.</p>
+          </>
+        ) : (
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
               <input
-                type="checkbox"
-                name="allowedActivities"
-                value={activity}
-                checked={selectedActivities.includes(activity)}
-                onChange={(e) => toggleActivity(activity, e.target.checked)}
-                className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                type="radio"
+                name="dataSource"
+                value="strava"
+                checked={dataSource === "strava"}
+                onChange={() => setDataSource("strava")}
+                className="h-4 w-4 border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
-              {activity}
+              Strava
             </label>
-          ))}
-        </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="dataSource"
+                value="google_health"
+                checked={dataSource === "google_health"}
+                onChange={() => setDataSource("google_health")}
+                className="h-4 w-4 border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              Google Health
+            </label>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {dataSource === "google_health"
+            ? "Participants connect Google Health and are ranked by daily step count."
+            : "Participants connect Strava and are ranked by synced Run/Ride/Walk activities."}
+        </p>
       </fieldset>
+
+      {dataSource === "strava" ? (
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Allowed activities</legend>
+          <div className="flex gap-4">
+            {ACTIVITY_TYPES.map((activity) => (
+              <label key={activity} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="allowedActivities"
+                  value={activity}
+                  checked={selectedActivities.includes(activity)}
+                  onChange={(e) => toggleActivity(activity, e.target.checked)}
+                  className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                {activity}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       <div className="space-y-2">
         <Label htmlFor="metricType">Leaderboard metric</Label>
-        <select
-          id="metricType"
-          name="metricType"
-          required
-          value={metricType}
-          onChange={(e) => setMetricTypePreference(e.target.value as MetricType)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          {METRIC_TYPES.filter((metric) => availableMetrics.includes(metric)).map((metric) => (
-            <option key={metric} value={metric}>
-              {METRIC_TYPE_LABELS[metric]}
-            </option>
-          ))}
-        </select>
+        {dataSource === "google_health" ? (
+          <>
+            <input type="hidden" name="metricType" value="total_steps" />
+            <p className="text-sm">Total steps</p>
+          </>
+        ) : (
+          <select
+            id="metricType"
+            name="metricType"
+            required
+            value={metricType}
+            onChange={(e) => setMetricTypePreference(e.target.value as MetricType)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {METRIC_TYPES.filter((metric) => availableMetrics.includes(metric)).map((metric) => (
+              <option key={metric} value={metric}>
+                {METRIC_TYPE_LABELS[metric]}
+              </option>
+            ))}
+          </select>
+        )}
         <p className="text-xs text-muted-foreground">
-          {availableMetrics.length === 1
-            ? "Ride combined with Run and/or Walk can only be ranked by active time."
-            : "Available metrics depend on which activities are allowed."}
+          {dataSource === "google_health"
+            ? "Google Health challenges are always ranked by total steps."
+            : availableMetrics.length === 1
+              ? "Ride combined with Run and/or Walk can only be ranked by active time."
+              : "Available metrics depend on which activities are allowed."}
         </p>
       </div>
 

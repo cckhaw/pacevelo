@@ -13,12 +13,18 @@ import {
 import { relations, sql } from "drizzle-orm";
 
 export const profileRoleValues = ["employee", "admin"] as const;
-export const metricTypeValues = ["total_distance_km", "active_time_mins", "elevation_m"] as const;
+export const metricTypeValues = ["total_distance_km", "active_time_mins", "elevation_m", "total_steps"] as const;
 export const activityTypeValues = ["Run", "Ride", "Walk"] as const;
+// Which telemetry source a challenge is scored from. Strava challenges rank
+// by distance/time/elevation from synced activities; Google Health
+// challenges rank by daily step counts. A challenge picks one at creation -
+// the two aren't comparable on the same leaderboard.
+export const challengeDataSourceValues = ["strava", "google_health"] as const;
 
 export type ProfileRole = (typeof profileRoleValues)[number];
 export type MetricType = (typeof metricTypeValues)[number];
 export type ActivityType = (typeof activityTypeValues)[number];
+export type ChallengeDataSource = (typeof challengeDataSourceValues)[number];
 
 // 1. Companies (Tenants)
 export const companies = pgTable("companies", {
@@ -59,6 +65,13 @@ export const profiles = pgTable("profiles", {
   stravaAccessToken: text("strava_access_token"),
   stravaRefreshToken: text("strava_refresh_token"),
   stravaTokenExpiresAt: timestamp("strava_token_expires_at", { withTimezone: true }),
+  // Google's stable per-account subject id (the ID token's `sub` claim) -
+  // the Google Health equivalent of stravaAthleteId, used the same way to
+  // detect "this Google account is already connected to a different profile".
+  googleHealthUserId: text("google_health_user_id").unique(),
+  googleHealthAccessToken: text("google_health_access_token"),
+  googleHealthRefreshToken: text("google_health_refresh_token"),
+  googleHealthTokenExpiresAt: timestamp("google_health_token_expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [uniqueIndex("profiles_email_idx").on(table.email)]);
 
@@ -69,7 +82,10 @@ export const challenges = pgTable("challenges", {
     .notNull()
     .references(() => companies.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
+  dataSource: text("data_source").$type<ChallengeDataSource>().notNull().default("strava"),
   metricType: text("metric_type").$type<MetricType>().notNull(),
+  // Only meaningful for dataSource = 'strava'; empty for google_health
+  // challenges, which aren't scoped to an activity type.
   allowedActivities: text("allowed_activities").array().$type<ActivityType[]>().notNull(),
   targetDepartments: text("target_departments").array(),
   // Restricts who can join via this challenge's invite link to addresses
@@ -180,6 +196,28 @@ export const loginEvents = pgTable(
   (table) => [index("login_events_profile_idx").on(table.profileId), index("login_events_occurred_at_idx").on(table.occurredAt)],
 );
 
+// 10. Daily step totals synced from the Google Health API - one row per
+// profile per calendar day (UTC), upserted as new data comes in rather than
+// storing individual Google "data points".
+export const stepEntries = pgTable(
+  "step_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    day: timestamp("day", { withTimezone: true }).notNull(),
+    steps: integer("steps").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("step_entries_profile_day_idx").on(table.profileId, table.day)],
+);
+
+export const stepEntriesRelations = relations(stepEntries, ({ one }) => ({
+  profile: one(profiles, { fields: [stepEntries.profileId], references: [profiles.id] }),
+}));
+
 export const companiesRelations = relations(companies, ({ many }) => ({
   profiles: many(profiles),
   challenges: many(challenges),
@@ -238,3 +276,5 @@ export type OnboardingCode = typeof onboardingCodes.$inferSelect;
 export type NewOnboardingCode = typeof onboardingCodes.$inferInsert;
 export type LoginEvent = typeof loginEvents.$inferSelect;
 export type NewLoginEvent = typeof loginEvents.$inferInsert;
+export type StepEntry = typeof stepEntries.$inferSelect;
+export type NewStepEntry = typeof stepEntries.$inferInsert;
