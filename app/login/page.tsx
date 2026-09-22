@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/login-form";
 import { LogoInline, LogoMark } from "@/components/logo";
@@ -46,7 +46,6 @@ export default async function LoginPage({
           <CardHeader className="items-center text-center">
             <LogoMark size={48} className="mb-2 rounded-xl" />
             <CardTitle className="text-xl">Log in to PaceVelo</CardTitle>
-            <CardDescription>Employees and HR admins both sign in here.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {errorMessage ? (
@@ -74,10 +73,10 @@ export default async function LoginPage({
             <LoginForm />
 
             <p className="text-center text-xs text-muted-foreground">
-              New here? You&apos;ll need a challenge invite link from your HR admin to sign up.
+              New here? You&apos;ll need a challenge invite link from your company admin to sign up.
             </p>
             <p className="text-center text-xs text-muted-foreground">
-              HR admin setting up your company for the first time?{" "}
+              Company admin setting up for the first time?{" "}
               <Link href="/admin/signup" className="font-medium text-primary underline-offset-4 hover:underline">
                 Set up your company
               </Link>
