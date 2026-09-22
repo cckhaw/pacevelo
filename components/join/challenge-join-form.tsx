@@ -6,7 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { requestChallengeOtp, verifyChallengeOtpAndJoin } from "@/app/join/challenge/[challengeId]/actions";
 
-export function ChallengeJoinForm({ challengeId, emailDomain }: { challengeId: string; emailDomain: string | null }) {
+export function ChallengeJoinForm({
+  challengeId,
+  emailDomain,
+  targetDepartments,
+}: {
+  challengeId: string;
+  emailDomain: string | null;
+  targetDepartments: string[] | null;
+}) {
+  const hasDepartmentOptions = Boolean(targetDepartments && targetDepartments.length > 0);
   const [step, setStep] = useState<"email" | "verify">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -126,15 +135,27 @@ export function ChallengeJoinForm({ challengeId, emailDomain }: { challengeId: s
               onChange={(e) => setFullName(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="department">Department (optional)</Label>
-            <Input
-              id="department"
-              placeholder="Engineering, Sales, HR…"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-            />
-          </div>
+          {hasDepartmentOptions ? (
+            <div className="space-y-2">
+              <Label htmlFor="department">Department</Label>
+              <select
+                id="department"
+                required
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="" disabled>
+                  Select your department
+                </option>
+                {targetDepartments!.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
         </>
       ) : null}
 

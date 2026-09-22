@@ -151,3 +151,39 @@ export async function getCompanyDetail(companyId: string) {
 
   return { company, challenges: challengeList, employeeCount, logins: companyLogins, recentLogins };
 }
+
+export interface CompanyUserRow {
+  id: string;
+  fullName: string;
+  email: string;
+  role: ProfileRole;
+  department: string | null;
+  stravaConnected: boolean;
+  createdAt: Date;
+}
+
+export async function getCompanyUsers(companyId: string): Promise<CompanyUserRow[]> {
+  const rows = await db.query.profiles.findMany({
+    where: eq(profiles.companyId, companyId),
+    orderBy: (t, { asc }) => [asc(t.role), asc(t.fullName)],
+    columns: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      department: true,
+      stravaAthleteId: true,
+      createdAt: true,
+    },
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    fullName: r.fullName,
+    email: r.email,
+    role: r.role,
+    department: r.department,
+    stravaConnected: r.stravaAthleteId != null,
+    createdAt: r.createdAt,
+  }));
+}

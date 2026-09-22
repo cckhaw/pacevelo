@@ -52,7 +52,11 @@ export default async function JoinChallengePage({
               This challenge has already ended.
             </p>
           ) : (
-            <ChallengeJoinForm challengeId={challenge.id} emailDomain={challenge.emailDomain} />
+            <ChallengeJoinForm
+              challengeId={challenge.id}
+              emailDomain={challenge.emailDomain}
+              targetDepartments={challenge.targetDepartments}
+            />
           )}
         </CardContent>
       </Card>
