@@ -111,11 +111,13 @@ the `dataTypes/steps/dataPoints` fetch), `state.ts` (signed OAuth state),
 
 **Caveats worth knowing before relying on this in production:**
 
-- The OAuth scope (`googlehealth.activity_and_fitness.readonly`) is
-  confirmed, but the `dataTypes/steps/dataPoints` request/response shape in
-  `lib/google-health/client.ts` is still inferred from available
-  documentation, not confirmed against a live call — verify it once you
-  have real Google Cloud OAuth credentials to test against.
+- The OAuth scope (`googlehealth.activity_and_fitness.readonly`) and the
+  `dataTypes/steps/dataPoints` filter syntax (`steps.interval.start_time >=
+  "..." AND steps.interval.end_time < "..."`, per Google's REST reference
+  for `users.dataTypes.dataPoints.list`) are now grounded in real
+  documentation, but the request/response shape as a whole still hasn't
+  been confirmed end-to-end against a fully successful sync — watch for
+  further adjustments as real usage surfaces edge cases.
 - New Google OAuth clients are capped at **100 test users** until Google
   verifies the app, which likely requires a security review for a
   health-data scope. Budget time for that before a company-wide rollout.
