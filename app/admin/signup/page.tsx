@@ -1,83 +1,158 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
 import { LogoMark } from "@/components/logo";
-import { signUpAdmin, type AuthActionState } from "@/app/admin/auth-actions";
+import {
+  signUpAdmin,
+  verifyOnboardingCode,
+  type AuthActionState,
+  type VerifyOnboardingCodeState,
+} from "@/app/admin/auth-actions";
 
-const initialState: AuthActionState = {};
+const initialCodeState: VerifyOnboardingCodeState = {};
+const initialSignupState: AuthActionState = {};
 
-export default function AdminSignupPage() {
-  const [state, formAction] = useActionState(signUpAdmin, initialState);
-
+function AuthCardShell({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <LogoMark size={48} className="mb-2 rounded-xl" />
-          <CardTitle className="text-xl">Set up your company</CardTitle>
-          <CardDescription>Launch a branded challenge for your team in under 5 minutes.</CardDescription>
+          <CardTitle className="text-xl">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form action={formAction} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Your full name</Label>
-              <Input id="fullName" name="fullName" required autoComplete="name" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Work email</Label>
-              <Input id="email" name="email" type="email" required autoComplete="email" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm password</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </div>
-            {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
-            <SubmitButton className="w-full" size="lg">
-              Create account
-            </SubmitButton>
-          </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Already set up?{" "}
-            <Link href="/admin/login" className="font-medium text-primary underline-offset-4 hover:underline">
-              Sign in
-            </Link>
-          </p>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            By creating an account, you agree to PaceVelo&apos;s{" "}
-            <Link href="/terms" className="underline-offset-4 hover:underline">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline-offset-4 hover:underline">
-              Privacy Policy
-            </Link>
-            .
-          </p>
-        </CardContent>
+        <CardContent>{children}</CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AdminSignupPage() {
+  const [codeState, verifyCodeAction] = useActionState(verifyOnboardingCode, initialCodeState);
+  const [signupState, signupAction] = useActionState(signUpAdmin, initialSignupState);
+  const [verifiedCode, setVerifiedCode] = useState<string | null>(null);
+
+  // Advances to the account-details step once the code is verified, tracked
+  // during render (per React's "adjust state when a prop/input changes"
+  // pattern) rather than an effect, so there's no extra render before the
+  // step switches. Compares the whole state object (not just .valid) since
+  // useActionState returns a fresh object on every completion.
+  const [handledCodeState, setHandledCodeState] = useState(codeState);
+  if (codeState !== handledCodeState) {
+    setHandledCodeState(codeState);
+    if (codeState.valid && codeState.code) setVerifiedCode(codeState.code);
+  }
+
+  if (!verifiedCode) {
+    return (
+      <AuthCardShell title="Set up your company" description="Enter the onboarding code PaceVelo gave you to get started.">
+        <form action={verifyCodeAction} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="onboardingCode">Onboarding code</Label>
+            <Input
+              id="onboardingCode"
+              name="onboardingCode"
+              required
+              placeholder="e.g. AB12CD34EF"
+              className="uppercase"
+              autoCapitalize="characters"
+              defaultValue={codeState.rawCode ?? ""}
+            />
+          </div>
+          {codeState.error ? <p className="text-sm text-destructive">{codeState.error}</p> : null}
+          <SubmitButton className="w-full" size="lg">
+            Continue
+          </SubmitButton>
+        </form>
+
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          Don&apos;t have a code?{" "}
+          <Link href="/contact" className="font-medium text-primary underline-offset-4 hover:underline">
+            Contact PaceVelo
+          </Link>{" "}
+          to find out more.
+        </p>
+        <p className="mt-2 text-center text-sm text-muted-foreground">
+          Already set up?{" "}
+          <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </AuthCardShell>
+    );
+  }
+
+  return (
+    <AuthCardShell title="Create your account" description="Code verified — now set up your login.">
+      <form action={signupAction} className="space-y-4">
+        <input type="hidden" name="onboardingCode" value={verifiedCode} />
+        <div className="space-y-2">
+          <Label htmlFor="fullName">Your full name</Label>
+          <Input id="fullName" name="fullName" required autoComplete="name" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">Work email</Label>
+          <Input id="email" name="email" type="email" required autoComplete="email" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <Input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
+        </div>
+        {signupState.error ? <p className="text-sm text-destructive">{signupState.error}</p> : null}
+        <SubmitButton className="w-full" size="lg">
+          Create account
+        </SubmitButton>
+      </form>
+
+      <button
+        type="button"
+        onClick={() => setVerifiedCode(null)}
+        className="mt-3 block w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+      >
+        Use a different code
+      </button>
+
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        Already set up?{" "}
+        <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+          Sign in
+        </Link>
+      </p>
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        By creating an account, you agree to PaceVelo&apos;s{" "}
+        <Link href="/terms" className="underline-offset-4 hover:underline">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline-offset-4 hover:underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
+    </AuthCardShell>
   );
 }

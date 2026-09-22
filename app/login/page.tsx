@@ -40,7 +40,7 @@ export default async function LoginPage({
         <CardHeader className="items-center text-center">
           <LogoMark size={48} className="mb-2 rounded-xl" />
           <CardTitle className="text-xl">Log in to PaceVelo</CardTitle>
-          <CardDescription>View your challenges and leaderboards.</CardDescription>
+          <CardDescription>Employees and HR admins both sign in here.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {errorMessage ? (
@@ -71,9 +71,9 @@ export default async function LoginPage({
             New here? You&apos;ll need a challenge invite link from your HR admin to sign up.
           </p>
           <p className="text-center text-xs text-muted-foreground">
-            Are you an HR admin?{" "}
-            <Link href="/admin/login" className="font-medium text-primary underline-offset-4 hover:underline">
-              Sign in here
+            HR admin setting up your company for the first time?{" "}
+            <Link href="/admin/signup" className="font-medium text-primary underline-offset-4 hover:underline">
+              Set up your company
             </Link>
           </p>
         </CardContent>

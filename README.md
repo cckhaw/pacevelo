@@ -124,6 +124,29 @@ the `dataTypes/steps/dataPoints` fetch), `state.ts` (signed OAuth state),
   verifies the app, which likely requires a security review for a
   health-data scope. Budget time for that before a company-wide rollout.
 
+## Phase 4: Contact form, gated onboarding, and a single login screen
+
+- **Public contact form** (`/contact`): name/email/phone/message, guarded by
+  a [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)
+  captcha (`components/turnstile-widget.tsx`, verified server-side in
+  `lib/turnstile.ts`), emailed to PaceVelo's own inbox
+  (`lib/email.ts#sendContactEnquiryEmail`, hardcoded to `me@khaw.cc` - not
+  company-configurable, since this is PaceVelo's own enquiry line, not a
+  per-company feature). Linked from the homepage's "Contact Us" button.
+- **Onboarding code gate** (`/admin/signup`): a two-step flow - the
+  onboarding code is checked first (`verifyOnboardingCode` in
+  `app/admin/auth-actions.ts`), and the rest of the sign-up form (name,
+  email, password) only renders once it's valid. An invalid/missing code
+  points to `/contact` instead of letting someone fill in account details
+  they can't actually use. The code carries through to `/admin/company` (as
+  a `?code=` query param, pre-filling that step's own field) where it's
+  re-validated and actually consumed, same as before this change.
+- **Single login screen** (`/login`): employees and HR admins sign in from
+  the same form; `signIn` (`app/login/actions.ts`) already redirected by
+  role, so the separate `/admin/login` page/action were redundant and are
+  gone (old links to `/admin/login` get a permanent redirect to `/login`
+  via `next.config.ts`).
+
 ## Getting started
 
 1. **Create a Neon database.** Either via [neon.tech](https://neon.tech)
@@ -146,6 +169,11 @@ the `dataTypes/steps/dataPoints` fetch), `state.ts` (signed OAuth state),
      `GOOGLE_HEALTH_CLIENT_SECRET`, with redirect URI
      `{NEXT_PUBLIC_APP_URL}/api/auth/google-health/callback`, and a
      `CRON_SECRET` for `/api/cron/sync-google-health` — see "Phase 3" above.
+   - A Cloudflare Turnstile widget's Site Key/Secret Key as
+     `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`, for the
+     `/contact` form's captcha — see "Phase 4" above. Without these the
+     form still renders but shows "Captcha isn't configured" instead of the
+     widget, and submissions are rejected server-side.
 3. Run the schema migration against your Neon database:
    ```bash
    npm run db:migrate

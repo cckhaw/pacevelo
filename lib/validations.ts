@@ -21,6 +21,13 @@ export const emailDomainSchema = z
   .optional()
   .transform((v) => (v ? v : null));
 
+export const contactSchema = z.object({
+  name: z.string().trim().min(2, "Enter your name").max(120),
+  email: emailSchema,
+  phone: z.string().trim().min(6, "Enter a valid phone number").max(30),
+  message: z.string().trim().min(10, "Tell us a bit more (at least 10 characters)").max(2000),
+});
+
 export const companySchema = z.object({
   name: z.string().trim().min(2, "Company name is too short").max(120),
   slackWebhookUrl: z

@@ -9,12 +9,14 @@ import { hasBackofficeSession } from "@/lib/backoffice-session";
 
 /**
  * Guards an /admin page: requires a signed-in session whose profile has
- * role = 'admin'. Redirects to /admin/login otherwise.
+ * role = 'admin'. Redirects to the shared /login page otherwise (employees
+ * and HR admins sign in from the same screen; it redirects each to the
+ * right dashboard by role).
  */
 export async function requireAdmin() {
   const session = await getSession();
   if (!session) {
-    redirect("/admin/login");
+    redirect("/login");
   }
 
   const profile = await db.query.profiles.findFirst({
@@ -22,7 +24,7 @@ export async function requireAdmin() {
   });
 
   if (!profile || profile.role !== "admin") {
-    redirect("/admin/login");
+    redirect("/login");
   }
 
   return { user: { id: profile.id }, profile };

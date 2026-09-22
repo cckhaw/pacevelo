@@ -10,7 +10,13 @@ import type { Company } from "@/db/schema";
 
 const initialState: CompanyActionState = {};
 
-export function CompanyForm({ company }: { company: Company | null }) {
+export function CompanyForm({
+  company,
+  defaultOnboardingCode,
+}: {
+  company: Company | null;
+  defaultOnboardingCode?: string;
+}) {
   const [state, formAction] = useActionState(saveCompany, initialState);
 
   return (
@@ -25,6 +31,7 @@ export function CompanyForm({ company }: { company: Company | null }) {
             placeholder="e.g. AB12CD34EF"
             className="uppercase"
             autoCapitalize="characters"
+            defaultValue={defaultOnboardingCode ?? ""}
           />
           <p className="text-xs text-muted-foreground">The code PaceVelo gave you when you signed up.</p>
         </div>
