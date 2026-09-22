@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
-import { LogoMark } from "@/components/logo";
+import { LogoInline, LogoMark } from "@/components/logo";
 import {
   signUpAdmin,
   verifyOnboardingCode,
@@ -28,15 +28,22 @@ function AuthCardShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="items-center text-center">
-          <LogoMark size={48} className="mb-2 rounded-xl" />
-          <CardTitle className="text-xl">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent>{children}</CardContent>
-      </Card>
+    <div className="flex min-h-screen flex-col bg-secondary">
+      <header className="flex items-center px-4 py-4 sm:px-6">
+        <Link href="/">
+          <LogoInline markSize={32} />
+        </Link>
+      </header>
+      <main className="flex flex-1 items-center justify-center px-4 pb-8">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="items-center text-center">
+            <LogoMark size={48} className="mb-2 rounded-xl" />
+            <CardTitle className="text-xl">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </CardHeader>
+          <CardContent>{children}</CardContent>
+        </Card>
+      </main>
     </div>
   );
 }

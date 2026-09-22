@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/login-form";
-import { LogoMark } from "@/components/logo";
+import { LogoInline, LogoMark } from "@/components/logo";
 import { signOutAndReconnectStrava, signOutAndReconnectGoogleHealth } from "@/app/login/actions";
 
 const ERROR_MESSAGES: Record<string, (hint?: string) => string> = {
@@ -35,49 +35,56 @@ export default async function LoginPage({
   const errorMessage = error ? (ERROR_MESSAGES[error] ?? (() => "Something went wrong. Please try again."))(hint) : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="items-center text-center">
-          <LogoMark size={48} className="mb-2 rounded-xl" />
-          <CardTitle className="text-xl">Log in to PaceVelo</CardTitle>
-          <CardDescription>Employees and HR admins both sign in here.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {errorMessage ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {errorMessage}
+    <div className="flex min-h-screen flex-col bg-secondary">
+      <header className="flex items-center px-4 py-4 sm:px-6">
+        <Link href="/">
+          <LogoInline markSize={32} />
+        </Link>
+      </header>
+      <main className="flex flex-1 items-center justify-center px-4 pb-8">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="items-center text-center">
+            <LogoMark size={48} className="mb-2 rounded-xl" />
+            <CardTitle className="text-xl">Log in to PaceVelo</CardTitle>
+            <CardDescription>Employees and HR admins both sign in here.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {errorMessage ? (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {errorMessage}
+              </p>
+            ) : null}
+
+            {error === "strava_account_already_linked_no_password" ? (
+              <form action={signOutAndReconnectStrava}>
+                <Button type="submit" variant="outline" className="w-full">
+                  Sign out & connect with Strava
+                </Button>
+              </form>
+            ) : null}
+
+            {error === "google_health_account_already_linked_no_password" ? (
+              <form action={signOutAndReconnectGoogleHealth}>
+                <Button type="submit" variant="outline" className="w-full">
+                  Sign out & connect with Google Health
+                </Button>
+              </form>
+            ) : null}
+
+            <LoginForm />
+
+            <p className="text-center text-xs text-muted-foreground">
+              New here? You&apos;ll need a challenge invite link from your HR admin to sign up.
             </p>
-          ) : null}
-
-          {error === "strava_account_already_linked_no_password" ? (
-            <form action={signOutAndReconnectStrava}>
-              <Button type="submit" variant="outline" className="w-full">
-                Sign out & connect with Strava
-              </Button>
-            </form>
-          ) : null}
-
-          {error === "google_health_account_already_linked_no_password" ? (
-            <form action={signOutAndReconnectGoogleHealth}>
-              <Button type="submit" variant="outline" className="w-full">
-                Sign out & connect with Google Health
-              </Button>
-            </form>
-          ) : null}
-
-          <LoginForm />
-
-          <p className="text-center text-xs text-muted-foreground">
-            New here? You&apos;ll need a challenge invite link from your HR admin to sign up.
-          </p>
-          <p className="text-center text-xs text-muted-foreground">
-            HR admin setting up your company for the first time?{" "}
-            <Link href="/admin/signup" className="font-medium text-primary underline-offset-4 hover:underline">
-              Set up your company
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+            <p className="text-center text-xs text-muted-foreground">
+              HR admin setting up your company for the first time?{" "}
+              <Link href="/admin/signup" className="font-medium text-primary underline-offset-4 hover:underline">
+                Set up your company
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
