@@ -94,8 +94,13 @@ Google Health has no webhook push like Strava's, so step data is pulled
 instead:
 
 - `app/api/cron/sync-google-health` — a Vercel Cron job (see `vercel.json`,
-  runs every 6 hours) that syncs every connected profile's recent daily
-  step totals into `step_entries`.
+  runs once daily at 03:00 UTC) that syncs every connected profile's recent
+  daily step totals into `step_entries`. Vercel's Hobby plan caps cron jobs
+  at once per day — a more frequent schedule fails at deploy time, and
+  Vercel only reads `vercel.json`'s `schedule` as a static string, not from
+  an env var, so there's no way to make the interval itself
+  env-configurable. To sync more often after upgrading to Pro, edit the
+  `schedule` cron expression in `vercel.json` directly and redeploy.
 - A "Sync now" button on the employee dashboard triggers the same pull
   on demand for a single profile, for whenever someone doesn't want to
   wait for the next cron run.
