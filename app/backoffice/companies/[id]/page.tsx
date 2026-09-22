@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Trophy, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompanyLimitsForm } from "@/components/backoffice/company-limits-form";
 import { requireBackoffice } from "@/lib/auth";
@@ -38,9 +39,16 @@ export default async function BackofficeCompanyDetailPage({ params }: { params: 
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to companies
           </Link>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold">{company.name}</h1>
-            {expired ? <Badge variant="secondary">Expired</Badge> : <Badge>Active</Badge>}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold">{company.name}</h1>
+              {expired ? <Badge variant="secondary">Expired</Badge> : <Badge>Active</Badge>}
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/backoffice/companies/${company.id}/users`}>
+                <Users className="h-3.5 w-3.5" /> Manage users
+              </Link>
+            </Button>
           </div>
           <p className="text-sm text-muted-foreground">/{company.slug}</p>
         </div>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import type { ChallengeActionState } from "@/app/admin/challenges/actions";
-import { ACTIVITY_TYPES, METRIC_TYPES, METRIC_TYPE_LABELS } from "@/lib/validations";
-import type { Challenge } from "@/db/schema";
+import { ACTIVITY_TYPES, METRIC_TYPES, METRIC_TYPE_LABELS, allowedMetricTypesFor } from "@/lib/validations";
+import type { ActivityType, Challenge, MetricType } from "@/db/schema";
 
 const initialState: ChallengeActionState = {};
 
@@ -24,6 +24,21 @@ export function ChallengeForm({
   defaultEmailDomain?: string;
 }) {
   const [state, formAction] = useActionState(action, initialState);
+  const [selectedActivities, setSelectedActivities] = useState<ActivityType[]>(
+    challenge?.allowedActivities ?? [...ACTIVITY_TYPES],
+  );
+  const [metricTypePreference, setMetricTypePreference] = useState<MetricType>(
+    challenge?.metricType ?? "total_distance_km",
+  );
+  const availableMetrics = allowedMetricTypesFor(selectedActivities);
+  // Derived during render rather than synced via effect: whichever metric the
+  // admin last picked, clamped to whatever the current activity selection
+  // still allows, so an invalid combination can never be submitted.
+  const metricType = availableMetrics.includes(metricTypePreference) ? metricTypePreference : availableMetrics[0];
+
+  function toggleActivity(activity: ActivityType, checked: boolean) {
+    setSelectedActivities((prev) => (checked ? [...prev, activity] : prev.filter((a) => a !== activity)));
+  }
 
   return (
     <form action={formAction} className="space-y-6">
@@ -61,23 +76,6 @@ export function ChallengeForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="metricType">Leaderboard metric</Label>
-        <select
-          id="metricType"
-          name="metricType"
-          required
-          defaultValue={challenge?.metricType ?? "total_distance_km"}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          {METRIC_TYPES.map((metric) => (
-            <option key={metric} value={metric}>
-              {METRIC_TYPE_LABELS[metric]}
-            </option>
-          ))}
-        </select>
-      </div>
-
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Allowed activities</legend>
         <div className="flex gap-4">
@@ -87,7 +85,8 @@ export function ChallengeForm({
                 type="checkbox"
                 name="allowedActivities"
                 value={activity}
-                defaultChecked={challenge ? challenge.allowedActivities.includes(activity) : true}
+                checked={selectedActivities.includes(activity)}
+                onChange={(e) => toggleActivity(activity, e.target.checked)}
                 className="h-4 w-4 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               {activity}
@@ -95,6 +94,29 @@ export function ChallengeForm({
           ))}
         </div>
       </fieldset>
+
+      <div className="space-y-2">
+        <Label htmlFor="metricType">Leaderboard metric</Label>
+        <select
+          id="metricType"
+          name="metricType"
+          required
+          value={metricType}
+          onChange={(e) => setMetricTypePreference(e.target.value as MetricType)}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          {METRIC_TYPES.filter((metric) => availableMetrics.includes(metric)).map((metric) => (
+            <option key={metric} value={metric}>
+              {METRIC_TYPE_LABELS[metric]}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          {availableMetrics.length === 1
+            ? "Ride combined with Run and/or Walk can only be ranked by active time."
+            : "Available metrics depend on which activities are allowed."}
+        </p>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="targetDepartments">Target departments</Label>
