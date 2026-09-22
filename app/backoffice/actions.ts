@@ -39,13 +39,19 @@ export async function updateCompanyLimits(
     return { error: "Challenge limit must be a whole number, or blank for unlimited." };
   }
 
+  const employeeLimitRaw = String(formData.get("employeeLimit") ?? "").trim();
+  const employeeLimit = Number(employeeLimitRaw);
+  if (!employeeLimitRaw || !Number.isInteger(employeeLimit) || employeeLimit < 1) {
+    return { error: "Employee limit must be a whole number of at least 1." };
+  }
+
   const expiresAtRaw = String(formData.get("expiresAt") ?? "");
   const expiresAt = new Date(expiresAtRaw);
   if (!expiresAtRaw || Number.isNaN(expiresAt.getTime())) {
     return { error: "Enter a valid expiry date." };
   }
 
-  await db.update(companies).set({ challengeLimit, expiresAt }).where(eq(companies.id, companyId));
+  await db.update(companies).set({ challengeLimit, employeeLimit, expiresAt }).where(eq(companies.id, companyId));
 
   revalidatePath(`/backoffice/companies/${companyId}`);
   revalidatePath("/backoffice");

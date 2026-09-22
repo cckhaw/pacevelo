@@ -3,24 +3,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LoginForm } from "@/components/login-form";
 import { LogoMark } from "@/components/logo";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  strava_access_denied: "You cancelled the Strava connection. You can try again anytime.",
-  invalid_oauth_state: "Your sign-in link expired. Please try connecting again.",
-  missing_oauth_params: "Something went wrong talking to Strava. Please try again.",
-  strava_exchange_failed: "We couldn't verify your Strava account. Please try again.",
-  strava_account_already_linked: "That Strava account is already connected to another PaceVelo profile.",
-  user_creation_failed: "We couldn't create your PaceVelo account. Please try again.",
-  profile_update_failed: "We couldn't save your Strava connection. Please try again.",
-  session_creation_failed: "We connected Strava but couldn't sign you in. Please try again.",
+const ERROR_MESSAGES: Record<string, (hint?: string) => string> = {
+  strava_access_denied: () => "You cancelled the Strava connection. You can try again anytime.",
+  invalid_oauth_state: () => "Your sign-in link expired. Please try connecting again.",
+  missing_oauth_params: () => "Something went wrong talking to Strava. Please try again.",
+  strava_exchange_failed: () => "We couldn't verify your Strava account. Please try again.",
+  strava_account_already_linked: (hint) =>
+    `That Strava account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""}. If that's you, log in with that account instead. If you meant to connect a different Strava account, disconnect PaceVelo from the other one first in Strava's settings (My Apps).`,
+  employee_limit_reached: () => "Your company has reached its employee limit. Ask your HR admin to contact PaceVelo.",
+  user_creation_failed: () => "We couldn't create your PaceVelo account. Please try again.",
+  profile_update_failed: () => "We couldn't save your Strava connection. Please try again.",
+  session_creation_failed: () => "We connected Strava but couldn't sign you in. Please try again.",
 };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; hint?: string }>;
 }) {
-  const { error } = await searchParams;
-  const errorMessage = error ? ERROR_MESSAGES[error] ?? "Something went wrong. Please try again." : null;
+  const { error, hint } = await searchParams;
+  const errorMessage = error ? (ERROR_MESSAGES[error] ?? (() => "Something went wrong. Please try again."))(hint) : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary px-4">

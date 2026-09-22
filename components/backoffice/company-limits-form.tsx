@@ -15,10 +15,12 @@ function toDateInputValue(date: Date) {
 export function CompanyLimitsForm({
   companyId,
   challengeLimit,
+  employeeLimit,
   expiresAt,
 }: {
   companyId: string;
   challengeLimit: number | null;
+  employeeLimit: number;
   expiresAt: Date;
 }) {
   const [state, formAction] = useActionState(updateCompanyLimits.bind(null, companyId), initialState);
@@ -37,6 +39,18 @@ export function CompanyLimitsForm({
           placeholder="Unlimited"
         />
         <p className="text-xs text-muted-foreground">Leave blank for unlimited challenges.</p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="employeeLimit">Employee limit</Label>
+        <Input
+          id="employeeLimit"
+          name="employeeLimit"
+          type="number"
+          min={1}
+          step={1}
+          defaultValue={employeeLimit}
+          required
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="expiresAt">Access expires</Label>

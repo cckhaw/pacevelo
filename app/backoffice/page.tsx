@@ -117,7 +117,8 @@ export default async function BackofficeDashboardPage() {
                           {c.challengeLimit != null ? ` / ${c.challengeLimit}` : ""}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" /> {c.participantCount}
+                          <Users className="h-3.5 w-3.5" /> {c.employeeCount} / {c.employeeLimit} employees ·{" "}
+                          {c.participantCount} in challenges
                         </span>
                         <span>Expires {formatDate(c.expiresAt)}</span>
                         {expired ? <Badge variant="secondary">Expired</Badge> : <Badge>Active</Badge>}

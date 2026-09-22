@@ -30,6 +30,9 @@ export const companies = pgTable("companies", {
   // Max challenges this company may ever create; null = unlimited. Set from
   // the onboarding code used at setup, adjustable from the back office.
   challengeLimit: integer("challenge_limit"),
+  // Max employees (role = 'employee') this company may have; defaults to 10
+  // at setup, adjustable from the back office.
+  employeeLimit: integer("employee_limit").notNull().default(10),
   // Access cutoff for setting up new challenges; defaults to 90 days out at
   // setup time, adjustable from the back office.
   expiresAt: timestamp("expires_at", { withTimezone: true })
