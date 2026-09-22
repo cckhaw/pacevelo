@@ -66,6 +66,7 @@ export const challengeSchema = z
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().min(1, "End date is required"),
     targetDepartments: z.array(z.string().trim().min(1)).optional(),
+    prizes: z.array(z.string().trim().min(1, "Prize description can't be empty").max(200)).max(20, "That's a lot of prizes - 20 max").optional(),
     emailDomain: emailDomainSchema,
   })
   .refine((data) => new Date(data.endDate) > new Date(data.startDate), {

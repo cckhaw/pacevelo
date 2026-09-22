@@ -88,6 +88,10 @@ export const challenges = pgTable("challenges", {
   // challenges, which aren't scoped to an activity type.
   allowedActivities: text("allowed_activities").array().$type<ActivityType[]>().notNull(),
   targetDepartments: text("target_departments").array(),
+  // Prize description for each top-N individual rank, in order (index 0 =
+  // 1st place, index 1 = 2nd, etc.) - array length is how many places pay
+  // out. Null/empty means no prizes configured for this challenge.
+  prizes: text("prizes").array(),
   // Restricts who can join via this challenge's invite link to addresses
   // ending in @<emailDomain>. Null means no restriction (kept nullable so
   // challenges created before this existed don't need backfilling).
