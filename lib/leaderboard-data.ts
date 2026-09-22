@@ -21,7 +21,7 @@ export interface SerializedChallenge {
 }
 
 export interface LeaderboardData {
-  company: { name: string } | null;
+  company: { name: string; slug: string; logoUrl: string | null } | null;
   challenges: SerializedChallenge[];
   activeChallenge: SerializedChallenge | null;
   individual: IndividualStanding[];
@@ -45,7 +45,7 @@ export async function getLeaderboardData(
 ): Promise<LeaderboardData> {
   const company = await db.query.companies.findFirst({
     where: eq(companies.slug, slug),
-    columns: { id: true, name: true },
+    columns: { id: true, name: true, slug: true, logoUrl: true },
   });
   if (!company) {
     return { company: null, challenges: [], activeChallenge: null, individual: [], departmental: [] };
@@ -82,7 +82,7 @@ export async function getLeaderboardData(
 
   if (!activeChallenge) {
     return {
-      company: { name: company.name },
+      company: { name: company.name, slug: company.slug, logoUrl: company.logoUrl },
       challenges: [],
       activeChallenge: null,
       individual: [],
@@ -123,7 +123,7 @@ export async function getLeaderboardData(
   ]);
 
   return {
-    company: { name: company.name },
+    company: { name: company.name, slug: company.slug, logoUrl: company.logoUrl },
     challenges: challengeList.map(serializeChallenge),
     activeChallenge: serializeChallenge(activeChallenge),
     individual: buildIndividualStandings(roster, rows, activeChallenge.metricType),

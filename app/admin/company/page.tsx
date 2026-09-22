@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
-import { AdminNav } from "@/components/admin-nav";
+import { AppNav } from "@/components/nav/app-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompanyForm } from "@/components/admin/company-form";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
+import { signOutAdmin } from "@/app/admin/auth-actions";
 
 export default async function CompanySettingsPage() {
   const { profile } = await requireAdmin();
@@ -15,7 +16,13 @@ export default async function CompanySettingsPage() {
 
   return (
     <div className="min-h-screen bg-secondary">
-      <AdminNav fullName={profile.fullName} hasCompany={Boolean(profile.companyId)} />
+      <AppNav
+        variant="admin"
+        fullName={profile.fullName}
+        hasCompany={Boolean(profile.companyId)}
+        brandHref="/admin"
+        signOutAction={signOutAdmin}
+      />
       <main className="mx-auto max-w-2xl px-4 py-10">
         <Card>
           <CardHeader>

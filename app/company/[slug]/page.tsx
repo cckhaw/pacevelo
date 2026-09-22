@@ -1,10 +1,14 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, LayoutDashboard, Trophy } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
+import { eq } from "drizzle-orm";
 import { LeaderboardView } from "@/components/leaderboard/leaderboard-view";
-import { LogoMark } from "@/components/logo";
+import { AppNav } from "@/components/nav/app-nav";
 import { getLeaderboardData } from "@/lib/leaderboard-data";
 import { getSession } from "@/lib/session";
+import { db } from "@/db";
+import { profiles } from "@/db/schema";
+import { signOutAdmin } from "@/app/admin/auth-actions";
+import { signOut } from "@/app/login/actions";
 
 export default async function CompanyLeaderboardPage({
   params,
@@ -21,32 +25,28 @@ export default async function CompanyLeaderboardPage({
     notFound();
   }
 
+  const profile = session
+    ? await db.query.profiles.findFirst({
+        where: eq(profiles.id, session.userId),
+        columns: { fullName: true, companyId: true },
+      })
+    : null;
+
+  const navVariant = session?.role === "admin" ? "admin" : session?.role === "employee" ? "employee" : "guest";
+
   return (
     <div className="min-h-screen bg-secondary">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-4">
-          <div className="flex items-center gap-2">
-            <LogoMark size={24} className="rounded-md" />
-            <h1 className="font-semibold">{data.company.name} Leaderboard</h1>
-          </div>
-
-          {session?.role === "admin" ? (
-            <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-              <Link href="/admin" className="flex items-center gap-1.5 hover:text-foreground">
-                <LayoutDashboard className="h-3.5 w-3.5" /> Dashboard
-              </Link>
-              <Link href="/admin/challenges" className="flex items-center gap-1.5 hover:text-foreground">
-                <Trophy className="h-3.5 w-3.5" /> Challenges
-              </Link>
-            </nav>
-          ) : session?.role === "employee" ? (
-            <Link href="/dashboard" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-              <LayoutDashboard className="h-3.5 w-3.5" /> My dashboard
-            </Link>
-          ) : null}
-        </div>
-      </header>
+      <AppNav
+        variant={navVariant}
+        fullName={profile?.fullName}
+        hasCompany={Boolean(profile?.companyId)}
+        brandHref={`/company/${slug}`}
+        brandLogoUrl={data.company.logoUrl}
+        brandLabel={data.company.name}
+        signOutAction={navVariant === "admin" ? signOutAdmin : navVariant === "employee" ? signOut : undefined}
+      />
       <main className="mx-auto max-w-5xl px-4 py-8">
+        <h1 className="mb-6 text-xl font-semibold">{data.company.name} Leaderboard</h1>
         {welcome ? (
           <p className="mb-6 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
             <CheckCircle2 className="h-4 w-4 shrink-0" /> Strava connected! Your workouts will appear here as soon as
