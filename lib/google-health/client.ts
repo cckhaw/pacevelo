@@ -135,16 +135,29 @@ interface GoogleHealthDataPointsResponse {
   nextPageToken?: string;
 }
 
+export interface DailyStepsResult {
+  byDay: Map<string, number>;
+  // Diagnostics for while the response shape is still unverified (see
+  // README caveats) - lets a 0-steps sync be told apart from "Google
+  // returned no data points at all" vs. "data points came back but this
+  // code doesn't know how to read their value field".
+  rawPointCount: number;
+  sampleRawPoint: GoogleHealthDataPoint | null;
+}
+
 /**
  * Fetches raw step data points between `startTime` and `endTime` and sums
- * them per UTC calendar day. Returns a map of day (UTC midnight) -> steps.
+ * them per UTC calendar day. Returns a map of day (UTC midnight) -> steps,
+ * plus raw-response diagnostics (see DailyStepsResult).
  */
 export async function getDailySteps(
   accessToken: string,
   startTime: Date,
   endTime: Date,
-): Promise<Map<string, number>> {
+): Promise<DailyStepsResult> {
   const byDay = new Map<string, number>();
+  let rawPointCount = 0;
+  let sampleRawPoint: GoogleHealthDataPoint | null = null;
   let pageToken: string | undefined;
 
   do {
@@ -173,6 +186,8 @@ export async function getDailySteps(
 
     const data: GoogleHealthDataPointsResponse = await response.json();
     for (const point of data.dataPoints ?? []) {
+      rawPointCount++;
+      if (!sampleRawPoint) sampleRawPoint = point;
       const count = Number(point.value?.count ?? 0);
       if (!count) continue;
       const day = point.interval.startTime.slice(0, 10); // UTC calendar day, YYYY-MM-DD
@@ -181,5 +196,5 @@ export async function getDailySteps(
     pageToken = data.nextPageToken;
   } while (pageToken);
 
-  return byDay;
+  return { byDay, rawPointCount, sampleRawPoint };
 }

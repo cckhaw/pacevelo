@@ -11,16 +11,24 @@ import { getDailySteps } from "@/lib/google-health/client";
 // someone reconnecting after being disconnected for a few weeks.
 const SYNC_WINDOW_DAYS = 30;
 
+export interface SyncStepsResult {
+  daysSynced: number;
+  // Diagnostics for while the response shape is still unverified (see
+  // README caveats) - see DailyStepsResult for what these mean.
+  rawPointCount: number;
+  sampleRawPoint: unknown;
+}
+
 /** Pulls recent daily step totals from Google Health and upserts them into step_entries. */
-export async function syncStepsForProfile(profileId: string): Promise<{ daysSynced: number }> {
+export async function syncStepsForProfile(profileId: string): Promise<SyncStepsResult> {
   const accessToken = await getValidGoogleHealthAccessToken(profileId);
 
   const endTime = new Date();
   const startTime = new Date(endTime.getTime() - SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  const byDay = await getDailySteps(accessToken, startTime, endTime);
+  const { byDay, rawPointCount, sampleRawPoint } = await getDailySteps(accessToken, startTime, endTime);
   if (byDay.size === 0) {
-    return { daysSynced: 0 };
+    return { daysSynced: 0, rawPointCount, sampleRawPoint };
   }
 
   const rows = [...byDay.entries()].map(([day, steps]) => ({
@@ -37,5 +45,5 @@ export async function syncStepsForProfile(profileId: string): Promise<{ daysSync
       set: { steps: sql`excluded.steps`, updatedAt: sql`now()` },
     });
 
-  return { daysSynced: rows.length };
+  return { daysSynced: rows.length, rawPointCount, sampleRawPoint };
 }

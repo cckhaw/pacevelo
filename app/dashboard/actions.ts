@@ -96,6 +96,13 @@ export async function disconnectGoogleHealth(): Promise<DisconnectGoogleHealthSt
 export interface SyncGoogleHealthState {
   error?: string;
   daysSynced?: number;
+  // Diagnostics for while the response shape is still unverified (see
+  // README caveats) - tells apart "Google returned no data points at all"
+  // (rawPointCount 0 - likely nothing synced to Google Health yet) from
+  // "data points came back but couldn't be read as steps" (rawPointCount >
+  // 0 with daysSynced 0 - the value field shape is probably wrong).
+  rawPointCount?: number;
+  sampleRawPoint?: unknown;
 }
 
 /** Manually pulls recent step data from Google Health - a stand-in for push updates, since Google Health has no webhook mechanism (unlike Strava). */
@@ -112,9 +119,9 @@ export async function syncGoogleHealthSteps(): Promise<SyncGoogleHealthState> {
   }
 
   try {
-    const { daysSynced } = await syncStepsForProfile(session.userId);
+    const { daysSynced, rawPointCount, sampleRawPoint } = await syncStepsForProfile(session.userId);
     revalidatePath("/dashboard");
-    return { daysSynced };
+    return { daysSynced, rawPointCount, sampleRawPoint };
   } catch (err) {
     console.error("Failed to sync Google Health steps", err);
     // Surfaces the underlying error (e.g. Google's own HTTP status/body) so
