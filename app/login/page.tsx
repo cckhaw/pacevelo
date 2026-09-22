@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/login-form";
 import { LogoMark } from "@/components/logo";
+import { signOutAndReconnectStrava } from "@/app/login/actions";
 
 const ERROR_MESSAGES: Record<string, (hint?: string) => string> = {
   strava_access_denied: () => "You cancelled the Strava connection. You can try again anytime.",
   invalid_oauth_state: () => "Your sign-in link expired. Please try connecting again.",
   missing_oauth_params: () => "Something went wrong talking to Strava. Please try again.",
   strava_exchange_failed: () => "We couldn't verify your Strava account. Please try again.",
-  strava_account_already_linked: (hint) =>
-    `That Strava account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""}. If that's you, log in with that account instead. If you meant to connect a different Strava account, disconnect PaceVelo from the other one first in Strava's settings (My Apps).`,
+  strava_account_already_linked_with_password: (hint) =>
+    `That Strava account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""}. If that's you, log in below with that account's email and password instead. If you meant to connect a different Strava account, disconnect PaceVelo from the other one first in Strava's settings (My Apps).`,
+  strava_account_already_linked_no_password: (hint) =>
+    `That Strava account is already connected to a different PaceVelo account${hint ? ` (${hint})` : ""} that has no password set. If that's you, use the button below to sign into that account directly. If you meant to connect a different Strava account, disconnect PaceVelo from the other one first in Strava's settings (My Apps).`,
   employee_limit_reached: () => "Your company has reached its employee limit. Ask your HR admin to contact PaceVelo.",
   user_creation_failed: () => "We couldn't create your PaceVelo account. Please try again.",
   profile_update_failed: () => "We couldn't save your Strava connection. Please try again.",
@@ -37,6 +41,14 @@ export default async function LoginPage({
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {errorMessage}
             </p>
+          ) : null}
+
+          {error === "strava_account_already_linked_no_password" ? (
+            <form action={signOutAndReconnectStrava}>
+              <Button type="submit" variant="outline" className="w-full">
+                Sign out & connect with Strava
+              </Button>
+            </form>
           ) : null}
 
           <LoginForm />

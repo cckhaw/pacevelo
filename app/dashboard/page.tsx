@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { challengeParticipants, profiles } from "@/db/schema";
 import { getValidStravaAccessToken } from "@/lib/strava/tokens";
 import { isPast } from "@/lib/time";
+import { signOut } from "@/app/login/actions";
 
 export default async function DashboardPage({
   searchParams,
@@ -57,11 +58,18 @@ export default async function DashboardPage({
       ) : null}
 
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">{profile.fullName}</CardTitle>
-          <CardDescription>
-            {profile.company?.name ? `Member of ${profile.company.name}` : "Not yet linked to a company"}
-          </CardDescription>
+        <CardHeader className="flex-row items-start justify-between space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2">{profile.fullName}</CardTitle>
+            <CardDescription>
+              {profile.company?.name ? `Member of ${profile.company.name}` : "Not yet linked to a company"}
+            </CardDescription>
+          </div>
+          <form action={signOut}>
+            <Button variant="outline" size="sm" type="submit">
+              Sign out
+            </Button>
+          </form>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between rounded-md border px-3 py-2">
