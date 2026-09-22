@@ -11,6 +11,7 @@ import { challengeParticipants, profiles } from "@/db/schema";
 import { getValidStravaAccessToken } from "@/lib/strava/tokens";
 import { isPast } from "@/lib/time";
 import { signOut } from "@/app/login/actions";
+import { DisconnectStravaButton } from "@/components/disconnect-strava-button";
 
 export default async function DashboardPage({
   searchParams,
@@ -76,13 +77,16 @@ export default async function DashboardPage({
             <span className="flex items-center gap-2 text-sm">
               <Watch className="h-4 w-4" /> Strava connection
             </span>
-            {tokenStatus === "connected" ? (
-              <Badge className="gap-1 bg-primary text-primary-foreground">
-                <CheckCircle2 className="h-3 w-3" /> Connected
-              </Badge>
-            ) : (
-              <Badge variant="outline">Not connected</Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {tokenStatus === "connected" ? (
+                <Badge className="gap-1 bg-primary text-primary-foreground">
+                  <CheckCircle2 className="h-3 w-3" /> Connected
+                </Badge>
+              ) : (
+                <Badge variant="outline">Not connected</Badge>
+              )}
+              {profile.stravaAthleteId ? <DisconnectStravaButton /> : null}
+            </div>
           </div>
 
           {profile.department ? (

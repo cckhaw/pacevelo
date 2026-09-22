@@ -54,6 +54,18 @@ export async function exchangeStravaCode(code: string): Promise<StravaTokenExcha
   return response.json();
 }
 
+/** Revokes PaceVelo's access to this Strava account, so it's free to be connected to a different PaceVelo profile. */
+export async function deauthorizeStrava(accessToken: string): Promise<void> {
+  const response = await fetch("https://www.strava.com/oauth/deauthorize", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Strava deauthorize failed: ${response.status} ${await response.text()}`);
+  }
+}
+
 /** Exchanges a refresh token for a fresh access token (Strava rotates the refresh token too). */
 export async function refreshStravaToken(refreshToken: string): Promise<StravaTokenResponse> {
   const { clientId, clientSecret } = stravaCredentials();
