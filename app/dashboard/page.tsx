@@ -87,11 +87,11 @@ export default async function DashboardPage({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between rounded-md border px-3 py-2">
-              <span className="flex items-center gap-2 text-sm">
-                <Watch className="h-4 w-4" /> Strava connection
-              </span>
-              <div className="flex items-center gap-2">
+            <div className="rounded-md border px-3 py-2">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm">
+                  <Watch className="h-4 w-4" /> Strava connection
+                </span>
                 {tokenStatus === "connected" ? (
                   <Badge className="gap-1 bg-primary text-primary-foreground">
                     <CheckCircle2 className="h-3 w-3" /> Connected
@@ -99,8 +99,12 @@ export default async function DashboardPage({
                 ) : (
                   <Badge variant="outline">Not connected</Badge>
                 )}
-                {profile.stravaAthleteId ? <DisconnectStravaButton /> : null}
               </div>
+              {profile.stravaAthleteId ? (
+                <div className="mt-2 flex flex-wrap items-start justify-end gap-2">
+                  <DisconnectStravaButton />
+                </div>
+              ) : null}
             </div>
 
             {profile.department ? (
@@ -116,11 +120,11 @@ export default async function DashboardPage({
               </Button>
             ) : null}
 
-            <div className="flex items-center justify-between rounded-md border px-3 py-2">
-              <span className="flex items-center gap-2 text-sm">
-                <Footprints className="h-4 w-4" /> Google Health connection
-              </span>
-              <div className="flex items-center gap-2">
+            <div className="rounded-md border px-3 py-2">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm">
+                  <Footprints className="h-4 w-4" /> Google Health connection
+                </span>
                 {googleHealthStatus === "connected" ? (
                   <Badge className="gap-1 bg-primary text-primary-foreground">
                     <CheckCircle2 className="h-3 w-3" /> Connected
@@ -128,13 +132,13 @@ export default async function DashboardPage({
                 ) : (
                   <Badge variant="outline">Not connected</Badge>
                 )}
-                {profile.googleHealthUserId ? (
-                  <>
-                    <SyncGoogleHealthButton />
-                    <DisconnectGoogleHealthButton />
-                  </>
-                ) : null}
               </div>
+              {profile.googleHealthUserId ? (
+                <div className="mt-2 flex flex-wrap items-start justify-end gap-2">
+                  <SyncGoogleHealthButton />
+                  <DisconnectGoogleHealthButton />
+                </div>
+              ) : null}
             </div>
 
             {googleHealthStatus !== "connected" ? (

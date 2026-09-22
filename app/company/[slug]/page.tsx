@@ -49,8 +49,10 @@ export default async function CompanyLeaderboardPage({
       <main className="mx-auto max-w-5xl px-4 py-8">
         {welcome ? (
           <p className="mb-6 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-            <CheckCircle2 className="h-4 w-4 shrink-0" /> Strava connected! Your workouts will appear here as soon as
-            they sync.
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {data.activeChallenge?.dataSource === "google_health"
+              ? "Google Health connected! Your steps will appear here as soon as they sync."
+              : "Strava connected! Your workouts will appear here as soon as they sync."}
           </p>
         ) : null}
         <LeaderboardView slug={slug} initialData={data} />
