@@ -257,8 +257,9 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
                           ) : null}
                         </p>
                         {prize ? (
-                          <p className="mt-0.5 flex items-center gap-1 truncate text-xs font-medium text-amber-600 dark:text-amber-400">
-                            <Trophy className="h-3 w-3 shrink-0" /> In the running for {prize}
+                          <p className="mt-0.5 flex items-start gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                            <Trophy className="mt-0.5 h-3 w-3 shrink-0" />
+                            <span>In the running for {prize}</span>
                           </p>
                         ) : null}
                       </div>
