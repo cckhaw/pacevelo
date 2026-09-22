@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, eq, gte } from "drizzle-orm";
 import { Archive, Pencil, Plus, Trophy } from "lucide-react";
-import { AdminNav } from "@/components/admin-nav";
+import { AppNav } from "@/components/nav/app-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
 import { METRIC_TYPE_LABELS } from "@/lib/validations";
+import { signOutAdmin } from "@/app/admin/auth-actions";
 
 function formatDate(value: Date) {
   return value.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -32,7 +33,13 @@ export default async function ChallengesPage() {
 
   return (
     <div className="min-h-screen bg-secondary">
-      <AdminNav fullName={profile.fullName} hasCompany={Boolean(profile.companyId)} />
+      <AppNav
+        variant="admin"
+        fullName={profile.fullName}
+        hasCompany={Boolean(profile.companyId)}
+        brandHref="/admin"
+        signOutAction={signOutAdmin}
+      />
       <main className="mx-auto max-w-3xl px-4 py-10">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Challenges</h1>
