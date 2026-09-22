@@ -10,12 +10,12 @@ const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 // step counts.
 const GOOGLE_HEALTH_API_BASE = "https://health.googleapis.com/v4";
 
-// NOTE: Google's Health API scopes page (developers.google.com/health/scopes)
-// wasn't reachable while building this - this follows the naming convention
-// Google uses for its other per-data-type health scopes. Verify the exact
-// string in your Google Cloud OAuth consent screen configuration and adjust
-// here if it differs.
-export const GOOGLE_HEALTH_SCOPES = ["openid", "https://www.googleapis.com/auth/health.steps.read"];
+// googlehealth.activity_and_fitness.readonly covers activity/fitness data
+// broadly (steps included) - there's no narrower steps-only scope.
+export const GOOGLE_HEALTH_SCOPES = [
+  "openid",
+  "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
+];
 
 interface GoogleTokenResponse {
   access_token: string;
