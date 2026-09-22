@@ -29,6 +29,8 @@ export interface SerializedChallenge {
   allowedActivities: ActivityType[];
   startDate: string;
   endDate: string;
+  // Prize description per top-N individual rank (index 0 = 1st place).
+  prizes: string[];
 }
 
 export interface LeaderboardData {
@@ -48,6 +50,7 @@ function serializeChallenge(challenge: typeof challenges.$inferSelect): Serializ
     allowedActivities: challenge.allowedActivities,
     startDate: challenge.startDate.toISOString(),
     endDate: challenge.endDate.toISOString(),
+    prizes: challenge.prizes ?? [],
   };
 }
 

@@ -91,6 +91,13 @@ function parseChallengeForm(formData: FormData) {
     .split(",")
     .map((d) => d.trim())
     .filter(Boolean);
+  // Prize inputs are ordered (index 0 = 1st place); the form requires each
+  // one to be filled in before submitting, so this only strips accidental
+  // blanks rather than reordering anything meaningful.
+  const prizes = formData
+    .getAll("prizes")
+    .map((p) => String(p).trim())
+    .filter(Boolean);
 
   return challengeSchema.safeParse({
     title: formData.get("title"),
@@ -100,6 +107,7 @@ function parseChallengeForm(formData: FormData) {
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
     targetDepartments: targetDepartments.length ? targetDepartments : undefined,
+    prizes: prizes.length ? prizes : undefined,
     emailDomain: formData.get("emailDomain"),
   });
 }
@@ -156,6 +164,7 @@ export async function createChallenge(
       metricType: parsed.data.metricType,
       allowedActivities: parsed.data.allowedActivities,
       targetDepartments: parsed.data.targetDepartments ?? null,
+      prizes: parsed.data.prizes ?? null,
       emailDomain: parsed.data.emailDomain,
       startDate,
       endDate,
@@ -231,6 +240,7 @@ export async function updateChallenge(
         metricType: parsed.data.metricType,
         allowedActivities: parsed.data.allowedActivities,
         targetDepartments: parsed.data.targetDepartments ?? null,
+        prizes: parsed.data.prizes ?? null,
         emailDomain: parsed.data.emailDomain,
         startDate,
         endDate,

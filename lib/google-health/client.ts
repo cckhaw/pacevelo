@@ -125,9 +125,21 @@ export async function revokeGoogleHealthToken(token: string): Promise<void> {
   }
 }
 
+// The real response shape (confirmed from a live sync) nests the value and
+// interval under a key named after the data type ("steps" here) - not
+// under generic top-level "interval"/"value" fields as first guessed.
+// civilStartTime gives the athlete's own local calendar date directly, so
+// day-bucketing doesn't have to assume UTC (which would misfile points
+// recorded shortly after local midnight in timezones ahead of UTC).
 interface GoogleHealthDataPoint {
-  interval: { startTime: string; endTime: string };
-  value?: { count?: string };
+  steps: {
+    interval: {
+      startTime: string;
+      endTime: string;
+      civilStartTime?: { date: { year: number; month: number; day: number } };
+    };
+    count?: string;
+  };
 }
 
 interface GoogleHealthDataPointsResponse {
@@ -135,27 +147,47 @@ interface GoogleHealthDataPointsResponse {
   nextPageToken?: string;
 }
 
+export interface DailyStepsResult {
+  byDay: Map<string, number>;
+  // Diagnostics for while the response shape is still unverified (see
+  // README caveats) - lets a 0-steps sync be told apart from "Google
+  // returned no data points at all" vs. "data points came back but this
+  // code doesn't know how to read their value field".
+  rawPointCount: number;
+  sampleRawPoint: GoogleHealthDataPoint | null;
+}
+
 /**
  * Fetches raw step data points between `startTime` and `endTime` and sums
- * them per UTC calendar day. Returns a map of day (UTC midnight) -> steps.
+ * them per calendar day in the athlete's own local time (via each point's
+ * civilStartTime, not a UTC cut, which would misfile points recorded
+ * shortly after local midnight in timezones ahead of UTC). Returns a map
+ * of day ("YYYY-MM-DD") -> steps, plus raw-response diagnostics (see
+ * DailyStepsResult).
  */
 export async function getDailySteps(
   accessToken: string,
   startTime: Date,
   endTime: Date,
-): Promise<Map<string, number>> {
+): Promise<DailyStepsResult> {
   const byDay = new Map<string, number>();
+  let rawPointCount = 0;
+  let sampleRawPoint: GoogleHealthDataPoint | null = null;
   let pageToken: string | undefined;
 
   do {
     // Per Google's REST reference (users.dataTypes.dataPoints.list), the
-    // filter must reference fields as "{data_type}.interval.start_time" /
-    // "{data_type}.interval.end_time" - the data type name (here "steps",
-    // matching the dataTypes/steps path segment below) is a required
-    // prefix, and only >= and < are supported (not <=).
+    // filter must reference fields as "{data_type}.interval.{field}" - the
+    // data type name (here "steps", matching the dataTypes/steps path
+    // segment below) is a required prefix, and only >= and < are supported
+    // (not <=). Google rejects "steps.interval.end_time" as unfilterable
+    // ("Member ... is not supported for filtering") - like their
+    // total_calories example, steps only supports filtering on
+    // interval.start_time, so both the lower and upper bound of the range
+    // use that same field (not a start/end pair).
     const params = new URLSearchParams({
       page_size: "1000",
-      filter: `steps.interval.start_time >= "${startTime.toISOString()}" AND steps.interval.end_time < "${endTime.toISOString()}"`,
+      filter: `steps.interval.start_time >= "${startTime.toISOString()}" AND steps.interval.start_time < "${endTime.toISOString()}"`,
     });
     if (pageToken) params.set("page_token", pageToken);
 
@@ -169,13 +201,18 @@ export async function getDailySteps(
 
     const data: GoogleHealthDataPointsResponse = await response.json();
     for (const point of data.dataPoints ?? []) {
-      const count = Number(point.value?.count ?? 0);
+      rawPointCount++;
+      if (!sampleRawPoint) sampleRawPoint = point;
+      const count = Number(point.steps?.count ?? 0);
       if (!count) continue;
-      const day = point.interval.startTime.slice(0, 10); // UTC calendar day, YYYY-MM-DD
+      const civilDate = point.steps.interval.civilStartTime?.date;
+      const day = civilDate
+        ? `${civilDate.year}-${String(civilDate.month).padStart(2, "0")}-${String(civilDate.day).padStart(2, "0")}`
+        : point.steps.interval.startTime.slice(0, 10); // fallback: UTC calendar day, if civilStartTime is ever missing
       byDay.set(day, (byDay.get(day) ?? 0) + count);
     }
     pageToken = data.nextPageToken;
   } while (pageToken);
 
-  return byDay;
+  return { byDay, rawPointCount, sampleRawPoint };
 }

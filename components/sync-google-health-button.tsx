@@ -15,7 +15,22 @@ export function SyncGoogleHealthButton() {
     setMessage(null);
     startTransition(async () => {
       const result = await syncGoogleHealthSteps();
-      setMessage(result.error ?? `Synced ${result.daysSynced ?? 0} day${result.daysSynced === 1 ? "" : "s"} of steps.`);
+      if (result.error) {
+        setMessage(result.error);
+        return;
+      }
+      const daysSynced = result.daysSynced ?? 0;
+      let text = `Synced ${daysSynced} day${daysSynced === 1 ? "" : "s"} of steps.`;
+      // Diagnostics for while the response shape is still unverified (see
+      // README caveats) - tells apart "nothing synced to Google Health yet"
+      // from "data came back but this app can't read its value field".
+      if (daysSynced === 0) {
+        text +=
+          result.rawPointCount === 0
+            ? " Google Health returned no data points for the last 30 days - check that steps are actually being recorded/synced to Google Health on your phone."
+            : ` Google returned ${result.rawPointCount} data point(s) but none had a readable step count - sample: ${JSON.stringify(result.sampleRawPoint)}`;
+      }
+      setMessage(text);
     });
   }
 
@@ -24,7 +39,7 @@ export function SyncGoogleHealthButton() {
       <Button type="button" variant="outline" size="sm" onClick={handleClick} disabled={isPending}>
         <RefreshCw className={cn("h-3.5 w-3.5", isPending && "animate-spin")} /> Sync now
       </Button>
-      {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
+      {message ? <p className="max-w-xs break-words text-right text-xs text-muted-foreground">{message}</p> : null}
     </div>
   );
 }

@@ -2,6 +2,17 @@ import "server-only";
 
 import { Resend } from "resend";
 
+const CONTACT_INBOX = "me@khaw.cc";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function client() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -57,5 +68,37 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 
   if (error) {
     throw new Error(`Failed to send password reset email: ${error.message}`);
+  }
+}
+
+export interface ContactEnquiry {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+}
+
+/** Sends a public contact-form enquiry to PaceVelo's own inbox, with reply-to set to the sender so it can be answered directly. */
+export async function sendContactEnquiryEmail(enquiry: ContactEnquiry): Promise<void> {
+  const resend = client();
+
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: CONTACT_INBOX,
+    replyTo: enquiry.email,
+    subject: `New PaceVelo enquiry from ${enquiry.name}`,
+    text: `Name: ${enquiry.name}\nEmail: ${enquiry.email}\nPhone: ${enquiry.phone}\n\n${enquiry.message}`,
+    html: `
+      <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
+        <p><strong>Name:</strong> ${escapeHtml(enquiry.name)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(enquiry.email)}</p>
+        <p><strong>Phone:</strong> ${escapeHtml(enquiry.phone)}</p>
+        <p style="white-space: pre-wrap;">${escapeHtml(enquiry.message)}</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    throw new Error(`Failed to send contact enquiry email: ${error.message}`);
   }
 }

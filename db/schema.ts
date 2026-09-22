@@ -88,6 +88,10 @@ export const challenges = pgTable("challenges", {
   // challenges, which aren't scoped to an activity type.
   allowedActivities: text("allowed_activities").array().$type<ActivityType[]>().notNull(),
   targetDepartments: text("target_departments").array(),
+  // Prize description for each top-N individual rank, in order (index 0 =
+  // 1st place, index 1 = 2nd, etc.) - array length is how many places pay
+  // out. Null/empty means no prizes configured for this challenge.
+  prizes: text("prizes").array(),
   // Restricts who can join via this challenge's invite link to addresses
   // ending in @<emailDomain>. Null means no restriction (kept nullable so
   // challenges created before this existed don't need backfilling).
@@ -197,7 +201,9 @@ export const loginEvents = pgTable(
 );
 
 // 10. Daily step totals synced from the Google Health API - one row per
-// profile per calendar day (UTC), upserted as new data comes in rather than
+// profile per calendar day in the athlete's own local time (per Google's
+// civilStartTime on each data point, not a UTC cut - see
+// lib/google-health/client.ts), upserted as new data comes in rather than
 // storing individual Google "data points".
 export const stepEntries = pgTable(
   "step_entries",

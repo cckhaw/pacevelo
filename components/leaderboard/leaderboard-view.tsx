@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { RefreshCw, Trophy, Users } from "lucide-react";
+import { Clock, RefreshCw, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,6 +30,28 @@ function formatValue(value: number, metricType: keyof typeof METRIC_TYPE_LABELS)
   const rounded = metricType === "active_time_mins" ? Math.round(value) : Math.round(value * 10) / 10;
   const unit = metricType === "total_distance_km" ? "km" : metricType === "active_time_mins" ? "min" : "m";
   return `${rounded.toLocaleString()} ${unit}`;
+}
+
+function formatCountdown(msLeft: number): string {
+  if (msLeft <= 0) return "Ending now";
+  const totalSeconds = Math.floor(msLeft / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+/** Medals for the podium, plain numbers past 3rd - a small bit of fun for a leaderboard. */
+function rankBadge(rank: number): string {
+  if (rank === 1) return "🥇";
+  if (rank === 2) return "🥈";
+  if (rank === 3) return "🥉";
+  return String(rank);
 }
 
 function initials(name: string) {
@@ -85,7 +107,8 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
 
   const view = data ?? initialData;
   const secondsAgo = Math.max(0, Math.round((now - dataUpdatedAt) / 1000));
-  const hasEnded = view.activeChallenge ? new Date(view.activeChallenge.endDate).getTime() < now : false;
+  const countdownMs = view.activeChallenge ? new Date(view.activeChallenge.endDate).getTime() - now : 0;
+  const hasEnded = view.activeChallenge ? countdownMs < 0 : false;
 
   if (!view.activeChallenge) {
     return (
@@ -98,6 +121,7 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
   }
 
   const metricType = view.activeChallenge.metricType;
+  const prizes = view.activeChallenge.prizes;
   const maxDeptValue = Math.max(1, ...view.departmental.map((d) => d.value));
 
   return (
@@ -154,6 +178,36 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
         </div>
       </div>
 
+      {!hasEnded || prizes.length > 0 ? (
+        <div className="space-y-3">
+          {!hasEnded ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+              <Clock className="h-4 w-4 shrink-0 text-primary" />
+              <span className="text-sm font-semibold text-primary">{formatCountdown(countdownMs)} left</span>
+              {prizes.length > 0 ? (
+                <span className="text-sm text-muted-foreground">— can you make the podium?</span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {prizes.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Up for grabs:
+              </span>
+              {prizes.map((prize, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-xs font-medium"
+                >
+                  <span>{rankBadge(i + 1)}</span> {prize}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {view.activeChallenge.allowedActivities.length > 0 ? (
         <Tabs value={activityType} onValueChange={(v) => setActivityType(v as ActivityType | "all")}>
           <TabsList>
@@ -180,30 +234,41 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
               <p className="py-6 text-center text-sm text-muted-foreground">No activity logged yet.</p>
             ) : (
               <ol className="space-y-3">
-                {view.individual.map((entry, index) => (
-                  <li key={entry.profileId} className="flex items-center gap-3">
-                    <span className="w-5 shrink-0 text-right text-sm font-medium text-muted-foreground">
-                      {index + 1}
-                    </span>
-                    {entry.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- Strava-hosted avatar URL
-                      <img src={entry.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
-                    ) : (
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                        {initials(entry.fullName)}
+                {view.individual.map((entry, index) => {
+                  const prize = !hasEnded ? prizes[index] : undefined;
+                  return (
+                    <li key={entry.profileId} className="flex items-center gap-3">
+                      <span className="w-6 shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">
+                        {rankBadge(index + 1)}
                       </span>
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-sm">
-                      {entry.fullName}
-                      {entry.department ? (
-                        <span className="ml-1.5 text-xs text-muted-foreground">{entry.department}</span>
-                      ) : null}
-                    </span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums">
-                      {formatValue(entry.value, metricType)}
-                    </span>
-                  </li>
-                ))}
+                      {entry.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- Strava-hosted avatar URL
+                        <img src={entry.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+                      ) : (
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium">
+                          {initials(entry.fullName)}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm">
+                          {entry.fullName}
+                          {entry.department ? (
+                            <span className="ml-1.5 text-xs text-muted-foreground">{entry.department}</span>
+                          ) : null}
+                        </p>
+                        {prize ? (
+                          <p className="mt-0.5 flex items-start gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                            <Trophy className="mt-0.5 h-3 w-3 shrink-0" />
+                            <span>In the running for {prize}</span>
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">
+                        {formatValue(entry.value, metricType)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </CardContent>

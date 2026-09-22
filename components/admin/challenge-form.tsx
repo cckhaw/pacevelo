@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Plus, Trophy, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
@@ -12,6 +14,13 @@ const initialState: ChallengeActionState = {};
 
 function toDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+/** "1st", "2nd", "3rd", "4th", ... - including the 11th-13th exception. */
+function ordinal(n: number) {
+  const suffixes = ["th", "st", "nd", "rd"];
+  const remainder = n % 100;
+  return `${n}${suffixes[(remainder - 20) % 10] ?? suffixes[remainder] ?? suffixes[0]}`;
 }
 
 export function ChallengeForm({
@@ -31,6 +40,7 @@ export function ChallengeForm({
   const [metricTypePreference, setMetricTypePreference] = useState<MetricType>(
     challenge?.metricType ?? "total_distance_km",
   );
+  const [prizes, setPrizes] = useState<string[]>(challenge?.prizes ?? []);
   const availableMetrics: MetricType[] =
     dataSource === "google_health" ? ["total_steps"] : allowedMetricTypesFor(selectedActivities);
   // Derived during render rather than synced via effect: whichever metric the
@@ -184,6 +194,47 @@ export function ChallengeForm({
           Comma-separated. Leave blank to open the challenge to the whole company.
         </p>
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className="flex items-center gap-1.5 text-sm font-medium">
+          <Trophy className="h-4 w-4 text-primary" /> Prizes (optional)
+        </legend>
+        <p className="text-xs text-muted-foreground">
+          Give the top finishers something to chase. Anyone in these individual leaderboard positions will see
+          they&apos;re in the running on the public leaderboard.
+        </p>
+        {prizes.length > 0 ? (
+          <div className="space-y-2">
+            {prizes.map((prize, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="w-16 shrink-0 text-sm font-medium text-muted-foreground">{ordinal(i + 1)}</span>
+                <Input
+                  name="prizes"
+                  required
+                  maxLength={200}
+                  placeholder={`e.g. RM100 grocery voucher`}
+                  value={prize}
+                  onChange={(e) =>
+                    setPrizes((prev) => prev.map((p, j) => (j === i ? e.target.value : p)))
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setPrizes((prev) => prev.filter((_, j) => j !== i))}
+                  aria-label={`Remove ${ordinal(i + 1)} place prize`}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <Button type="button" variant="outline" size="sm" onClick={() => setPrizes((prev) => [...prev, ""])}>
+          <Plus className="h-3.5 w-3.5" /> Add a prize for {ordinal(prizes.length + 1)} place
+        </Button>
+      </fieldset>
 
       <div className="space-y-2">
         <Label htmlFor="emailDomain">Company email domain</Label>

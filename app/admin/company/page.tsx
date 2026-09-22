@@ -7,8 +7,13 @@ import { db } from "@/db";
 import { companies } from "@/db/schema";
 import { signOutAdmin } from "@/app/admin/auth-actions";
 
-export default async function CompanySettingsPage() {
+export default async function CompanySettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
   const { profile } = await requireAdmin();
+  const { code } = await searchParams;
 
   const company = profile.companyId
     ? (await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) })) ?? null
@@ -34,7 +39,7 @@ export default async function CompanySettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <CompanyForm company={company} />
+            <CompanyForm company={company} defaultOnboardingCode={code} />
           </CardContent>
         </Card>
       </main>

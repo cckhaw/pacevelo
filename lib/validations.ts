@@ -21,6 +21,13 @@ export const emailDomainSchema = z
   .optional()
   .transform((v) => (v ? v : null));
 
+export const contactSchema = z.object({
+  name: z.string().trim().min(2, "Enter your name").max(120),
+  email: emailSchema,
+  phone: z.string().trim().min(6, "Enter a valid phone number").max(30),
+  message: z.string().trim().min(10, "Tell us a bit more (at least 10 characters)").max(2000),
+});
+
 export const companySchema = z.object({
   name: z.string().trim().min(2, "Company name is too short").max(120),
   slackWebhookUrl: z
@@ -66,6 +73,7 @@ export const challengeSchema = z
     startDate: z.string().min(1, "Start date is required"),
     endDate: z.string().min(1, "End date is required"),
     targetDepartments: z.array(z.string().trim().min(1)).optional(),
+    prizes: z.array(z.string().trim().min(1, "Prize description can't be empty").max(200)).max(20, "That's a lot of prizes - 20 max").optional(),
     emailDomain: emailDomainSchema,
   })
   .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
