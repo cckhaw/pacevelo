@@ -65,6 +65,17 @@ export default function AdminSignupPage() {
               Sign in
             </Link>
           </p>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            By creating an account, you agree to PaceVelo&apos;s{" "}
+            <Link href="/terms" className="underline-offset-4 hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline-offset-4 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </CardContent>
       </Card>
     </div>
