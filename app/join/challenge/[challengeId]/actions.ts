@@ -7,6 +7,7 @@ import { challengeParticipants, challenges, profiles } from "@/db/schema";
 import { sendOtpEmail } from "@/lib/email";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createEmailVerification, verifyEmailOtp } from "@/lib/otp";
+import { checkEmployeeLimit } from "@/lib/company-limits";
 import { createSession } from "@/lib/session";
 import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 
@@ -118,6 +119,11 @@ export async function verifyChallengeOtpAndJoin(
     if (profile) {
       await db.update(profiles).set({ passwordHash }).where(eq(profiles.id, profile.id));
     } else {
+      const limitCheck = await checkEmployeeLimit(challenge.companyId);
+      if (!limitCheck.ok) {
+        return { error: limitCheck.error };
+      }
+
       const [created] = await db
         .insert(profiles)
         .values({

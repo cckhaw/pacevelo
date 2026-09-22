@@ -3,13 +3,23 @@ import { eq } from "drizzle-orm";
 import { exchangeStravaCode } from "@/lib/strava/client";
 import { decodeStravaState } from "@/lib/strava/state";
 import { createSession } from "@/lib/session";
+import { checkEmployeeLimit } from "@/lib/company-limits";
 import { db } from "@/db";
 import { companies, profiles } from "@/db/schema";
 
-function errorRedirect(appUrl: string, message: string) {
+function errorRedirect(appUrl: string, message: string, hint?: string) {
   const url = new URL("/login", appUrl);
   url.searchParams.set("error", message);
+  if (hint) url.searchParams.set("hint", hint);
   return NextResponse.redirect(url);
+}
+
+/** Masks an email for display in an error message - safe here since seeing it requires already having OAuth-authorized the conflicting Strava account. */
+function maskEmail(email: string): string {
+  const [user, domain] = email.split("@");
+  if (!domain) return email;
+  const visible = user.slice(0, 2);
+  return `${visible}${"*".repeat(Math.max(user.length - visible.length, 1))}@${domain}`;
 }
 
 export async function GET(request: NextRequest) {
@@ -62,11 +72,11 @@ export async function GET(request: NextRequest) {
 
   const existingAthleteProfile = await db.query.profiles.findFirst({
     where: eq(profiles.stravaAthleteId, athlete.id),
-    columns: { id: true, companyId: true, role: true },
+    columns: { id: true, companyId: true, role: true, email: true },
   });
 
   if (existingAthleteProfile && state.existingUserId && existingAthleteProfile.id !== state.existingUserId) {
-    return errorRedirect(appUrl, "strava_account_already_linked");
+    return errorRedirect(appUrl, "strava_account_already_linked", maskEmail(existingAthleteProfile.email));
   }
 
   let targetUserId: string;
@@ -108,6 +118,13 @@ export async function GET(request: NextRequest) {
         .where(eq(profiles.id, targetUserId));
     } else {
       // Brand new employee joining via an invite link (or direct connect).
+      if (company) {
+        const limitCheck = await checkEmployeeLimit(company.id);
+        if (!limitCheck.ok) {
+          return errorRedirect(appUrl, "employee_limit_reached");
+        }
+      }
+
       const syntheticEmail = `strava-${athlete.id}@users.pacevelo.app`;
       const [created] = await db
         .insert(profiles)

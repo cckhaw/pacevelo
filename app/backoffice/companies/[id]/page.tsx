@@ -25,7 +25,7 @@ export default async function BackofficeCompanyDetailPage({ params }: { params: 
     notFound();
   }
 
-  const { company, challenges, logins, recentLogins } = detail;
+  const { company, challenges, employeeCount, logins, recentLogins } = detail;
   const expired = isPast(company.expiresAt);
 
   return (
@@ -51,9 +51,13 @@ export default async function BackofficeCompanyDetailPage({ params }: { params: 
             <CardDescription>Adjust this company&apos;s challenge cap and access expiry.</CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {employeeCount} / {company.employeeLimit} employees
+            </p>
             <CompanyLimitsForm
               companyId={company.id}
               challengeLimit={company.challengeLimit}
+              employeeLimit={company.employeeLimit}
               expiresAt={company.expiresAt}
             />
           </CardContent>

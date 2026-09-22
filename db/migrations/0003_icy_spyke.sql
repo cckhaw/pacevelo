@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "employee_limit" integer DEFAULT 10 NOT NULL;
