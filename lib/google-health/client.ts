@@ -125,9 +125,21 @@ export async function revokeGoogleHealthToken(token: string): Promise<void> {
   }
 }
 
+// The real response shape (confirmed from a live sync) nests the value and
+// interval under a key named after the data type ("steps" here) - not
+// under generic top-level "interval"/"value" fields as first guessed.
+// civilStartTime gives the athlete's own local calendar date directly, so
+// day-bucketing doesn't have to assume UTC (which would misfile points
+// recorded shortly after local midnight in timezones ahead of UTC).
 interface GoogleHealthDataPoint {
-  interval: { startTime: string; endTime: string };
-  value?: { count?: string };
+  steps: {
+    interval: {
+      startTime: string;
+      endTime: string;
+      civilStartTime?: { date: { year: number; month: number; day: number } };
+    };
+    count?: string;
+  };
 }
 
 interface GoogleHealthDataPointsResponse {
@@ -147,8 +159,11 @@ export interface DailyStepsResult {
 
 /**
  * Fetches raw step data points between `startTime` and `endTime` and sums
- * them per UTC calendar day. Returns a map of day (UTC midnight) -> steps,
- * plus raw-response diagnostics (see DailyStepsResult).
+ * them per calendar day in the athlete's own local time (via each point's
+ * civilStartTime, not a UTC cut, which would misfile points recorded
+ * shortly after local midnight in timezones ahead of UTC). Returns a map
+ * of day ("YYYY-MM-DD") -> steps, plus raw-response diagnostics (see
+ * DailyStepsResult).
  */
 export async function getDailySteps(
   accessToken: string,
@@ -188,9 +203,12 @@ export async function getDailySteps(
     for (const point of data.dataPoints ?? []) {
       rawPointCount++;
       if (!sampleRawPoint) sampleRawPoint = point;
-      const count = Number(point.value?.count ?? 0);
+      const count = Number(point.steps?.count ?? 0);
       if (!count) continue;
-      const day = point.interval.startTime.slice(0, 10); // UTC calendar day, YYYY-MM-DD
+      const civilDate = point.steps.interval.civilStartTime?.date;
+      const day = civilDate
+        ? `${civilDate.year}-${String(civilDate.month).padStart(2, "0")}-${String(civilDate.day).padStart(2, "0")}`
+        : point.steps.interval.startTime.slice(0, 10); // fallback: UTC calendar day, if civilStartTime is ever missing
       byDay.set(day, (byDay.get(day) ?? 0) + count);
     }
     pageToken = data.nextPageToken;

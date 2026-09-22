@@ -197,7 +197,9 @@ export const loginEvents = pgTable(
 );
 
 // 10. Daily step totals synced from the Google Health API - one row per
-// profile per calendar day (UTC), upserted as new data comes in rather than
+// profile per calendar day in the athlete's own local time (per Google's
+// civilStartTime on each data point, not a UTC cut - see
+// lib/google-health/client.ts), upserted as new data comes in rather than
 // storing individual Google "data points".
 export const stepEntries = pgTable(
   "step_entries",
