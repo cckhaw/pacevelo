@@ -148,9 +148,14 @@ export async function getDailySteps(
   let pageToken: string | undefined;
 
   do {
+    // Per Google's REST reference (users.dataTypes.dataPoints.list), the
+    // filter must reference fields as "{data_type}.interval.start_time" /
+    // "{data_type}.interval.end_time" - the data type name (here "steps",
+    // matching the dataTypes/steps path segment below) is a required
+    // prefix, and only >= and < are supported (not <=).
     const params = new URLSearchParams({
       page_size: "1000",
-      filter: `interval.start_time >= "${startTime.toISOString()}" AND interval.end_time <= "${endTime.toISOString()}"`,
+      filter: `steps.interval.start_time >= "${startTime.toISOString()}" AND steps.interval.end_time < "${endTime.toISOString()}"`,
     });
     if (pageToken) params.set("page_token", pageToken);
 
