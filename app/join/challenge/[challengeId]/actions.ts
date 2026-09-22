@@ -9,7 +9,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { createEmailVerification, verifyEmailOtp } from "@/lib/otp";
 import { checkEmployeeLimit } from "@/lib/company-limits";
 import { createSession } from "@/lib/session";
-import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
+import { emailSchema, loginPasswordSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 
 export interface RequestOtpResult {
   error?: string;
@@ -86,9 +86,13 @@ export async function verifyChallengeOtpAndJoin(
     return { error: "Enter the 6-digit code from your email." };
   }
 
-  const parsedPassword = passwordSchema.safeParse(password);
-  if (!parsedPassword.success) {
-    return { error: parsedPassword.error.issues[0]?.message ?? "Invalid password" };
+  // A bare non-empty check for now - which schema actually applies
+  // (the complexity policy for a new account vs. just checking a password
+  // was typed for an existing one) depends on whether this email already
+  // has an account, which isn't known until after the OTP check below.
+  const loginCheck = loginPasswordSchema.safeParse(password);
+  if (!loginCheck.success) {
+    return { error: loginCheck.error.issues[0]?.message ?? "Invalid password" };
   }
 
   const loaded = await loadJoinableChallenge(challengeId);
@@ -104,9 +108,18 @@ export async function verifyChallengeOtpAndJoin(
   let profile = await db.query.profiles.findFirst({ where: eq(profiles.email, email) });
 
   if (profile?.passwordHash) {
-    const valid = await verifyPassword(parsedPassword.data, profile.passwordHash);
+    // Signing into an existing account - never re-validate their stored
+    // password against the current complexity policy, or anyone whose
+    // password predates it would be locked out.
+    const valid = await verifyPassword(password, profile.passwordHash);
     if (!valid) return { error: "Incorrect password for this account." };
   } else {
+    // Setting a password for the first time - the complexity policy
+    // applies here.
+    const parsedPassword = passwordSchema.safeParse(password);
+    if (!parsedPassword.success) {
+      return { error: parsedPassword.error.issues[0]?.message ?? "Invalid password" };
+    }
     if (!passwordsMatch(password, confirmPassword)) {
       return { error: "Passwords don't match." };
     }

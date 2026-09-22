@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import { resetPassword, type ResetPasswordState } from "@/app/reset-password/actions";
+import { PASSWORD_REQUIREMENTS_HINT } from "@/lib/validations";
 
 const initialState: ResetPasswordState = {};
 
@@ -16,7 +17,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <input type="hidden" name="token" value={token} />
       <div className="space-y-2">
         <Label htmlFor="password">New password</Label>
-        <Input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" />
+        <Input id="password" name="password" type="password" required minLength={12} autoComplete="new-password" />
+        <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_HINT}</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm password</Label>
@@ -25,7 +27,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           name="confirmPassword"
           type="password"
           required
-          minLength={8}
+          minLength={12}
           autoComplete="new-password"
         />
       </div>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
 import { changePassword, type AccountActionState } from "@/app/admin/account/actions";
+import { PASSWORD_REQUIREMENTS_HINT } from "@/lib/validations";
 
 const initialState: AccountActionState = {};
 
@@ -45,9 +46,10 @@ export function AccountForms({ email }: { email: string }) {
                 name="newPassword"
                 type="password"
                 required
-                minLength={8}
+                minLength={12}
                 autoComplete="new-password"
               />
+              <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_HINT}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmNewPassword">Confirm new password</Label>
@@ -56,7 +58,7 @@ export function AccountForms({ email }: { email: string }) {
                 name="confirmNewPassword"
                 type="password"
                 required
-                minLength={8}
+                minLength={12}
                 autoComplete="new-password"
               />
             </div>

@@ -1,7 +1,26 @@
 import { z } from "zod";
 
 export const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address");
-export const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
+
+export const PASSWORD_REQUIREMENTS_HINT =
+  "At least 12 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.";
+
+// The password policy - applies to both HR admins and employees, anywhere
+// a NEW password is being set (signup, reset, change). Never used to
+// validate a password submitted for login (checked against an existing
+// bcrypt hash) - see loginPasswordSchema - since that would lock out any
+// account whose password predates this policy.
+export const passwordSchema = z
+  .string()
+  .min(12, "Password must be at least 12 characters")
+  .regex(/[a-z]/, "Password must include a lowercase letter")
+  .regex(/[A-Z]/, "Password must include an uppercase letter")
+  .regex(/[0-9]/, "Password must include a number")
+  .regex(/[^A-Za-z0-9]/, "Password must include a symbol");
+
+// For validating a password on the way IN at login, before it's checked
+// against the stored hash - deliberately not the complexity policy above.
+export const loginPasswordSchema = z.string().min(1, "Enter your password");
 
 export function passwordsMatch(password: FormDataEntryValue | null, confirmPassword: FormDataEntryValue | null) {
   return password === confirmPassword;

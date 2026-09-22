@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { requestChallengeOtp, verifyChallengeOtpAndJoin } from "@/app/join/challenge/[challengeId]/actions";
+import { PASSWORD_REQUIREMENTS_HINT } from "@/lib/validations";
 
 export function ChallengeJoinForm({
   challengeId,
@@ -165,11 +166,15 @@ export function ChallengeJoinForm({
           id="password"
           type="password"
           required
-          minLength={8}
+          // Only enforced for a brand-new password - an existing account's
+          // password shouldn't be forced through today's policy just to
+          // log in, since it may predate it.
+          minLength={isExistingAccount ? undefined : 12}
           autoComplete={isExistingAccount ? "current-password" : "new-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        {!isExistingAccount ? <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_HINT}</p> : null}
       </div>
 
       {!isExistingAccount ? (
@@ -179,7 +184,7 @@ export function ChallengeJoinForm({
             id="confirmPassword"
             type="password"
             required
-            minLength={8}
+            minLength={12}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

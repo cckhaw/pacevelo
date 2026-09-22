@@ -7,13 +7,13 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { verifyPassword } from "@/lib/password";
 import { createSession, clearSession } from "@/lib/session";
-import { emailSchema, passwordSchema } from "@/lib/validations";
+import { emailSchema, loginPasswordSchema } from "@/lib/validations";
 
 export interface LoginActionState {
   error?: string;
 }
 
-const credentialsSchema = z.object({ email: emailSchema, password: passwordSchema });
+const credentialsSchema = z.object({ email: emailSchema, password: loginPasswordSchema });
 
 export async function signIn(_prevState: LoginActionState, formData: FormData): Promise<LoginActionState> {
   const parsed = credentialsSchema.safeParse({
