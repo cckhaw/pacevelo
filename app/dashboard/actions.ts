@@ -117,6 +117,10 @@ export async function syncGoogleHealthSteps(): Promise<SyncGoogleHealthState> {
     return { daysSynced };
   } catch (err) {
     console.error("Failed to sync Google Health steps", err);
-    return { error: "Could not sync steps from Google Health. Please try again." };
+    // Surfaces the underlying error (e.g. Google's own HTTP status/body) so
+    // it's visible without needing Vercel log access - useful while the
+    // Google Health API request shape is still unverified (see README).
+    const detail = err instanceof Error ? err.message : String(err);
+    return { error: `Could not sync steps from Google Health: ${detail}` };
   }
 }
