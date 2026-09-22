@@ -5,12 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
-import { changeEmail, changePassword, type AccountActionState } from "@/app/admin/account/actions";
+import { changePassword, type AccountActionState } from "@/app/admin/account/actions";
 
 const initialState: AccountActionState = {};
 
 export function AccountForms({ email }: { email: string }) {
-  const [emailState, emailAction] = useActionState(changeEmail, initialState);
   const [passwordState, passwordAction] = useActionState(changePassword, initialState);
 
   return (
@@ -18,29 +17,8 @@ export function AccountForms({ email }: { email: string }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Email address</CardTitle>
-          <CardDescription>Currently signed in as {email}.</CardDescription>
+          <CardDescription>Signed in as {email}. Contact PaceVelo if this needs to change.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form action={emailAction} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="newEmail">New email</Label>
-              <Input id="newEmail" name="newEmail" type="email" required autoComplete="email" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="emailCurrentPassword">Current password</Label>
-              <Input
-                id="emailCurrentPassword"
-                name="currentPassword"
-                type="password"
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            {emailState.error ? <p className="text-sm text-destructive">{emailState.error}</p> : null}
-            {emailState.success ? <p className="text-sm text-primary">{emailState.success}</p> : null}
-            <SubmitButton>Update email</SubmitButton>
-          </form>
-        </CardContent>
       </Card>
 
       <Card>
