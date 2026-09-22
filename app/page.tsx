@@ -33,6 +33,16 @@ export default function Home() {
           Joining a challenge? Use the invite link your company admin sent you
         </p>
       </div>
+
+      <footer className="flex items-center justify-center gap-4 px-4 py-6 text-sm text-muted-foreground">
+        <Link href="/privacy" className="hover:text-foreground">
+          Privacy Policy
+        </Link>
+        <span aria-hidden>·</span>
+        <Link href="/terms" className="hover:text-foreground">
+          Terms of Service
+        </Link>
+      </footer>
     </div>
   );
 }
