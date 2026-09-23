@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import { resetPassword, type ResetPasswordState } from "@/app/reset-password/actions";
@@ -17,15 +17,14 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <input type="hidden" name="token" value={token} />
       <div className="space-y-2">
         <Label htmlFor="password">New password</Label>
-        <Input id="password" name="password" type="password" required minLength={12} autoComplete="new-password" />
+        <PasswordInput id="password" name="password" required minLength={12} autoComplete="new-password" />
         <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_HINT}</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm password</Label>
-        <Input
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           required
           minLength={12}
           autoComplete="new-password"

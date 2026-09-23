@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -58,15 +58,14 @@ export function UserResetPasswordDialog({
         <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="newPassword">New password</Label>
-            <Input id="newPassword" name="newPassword" type="password" required minLength={12} autoComplete="new-password" />
+            <PasswordInput id="newPassword" name="newPassword" required minLength={12} autoComplete="new-password" />
             <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_HINT}</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm password</Label>
-            <Input
+            <PasswordInput
               id="confirmPassword"
               name="confirmPassword"
-              type="password"
               required
               minLength={12}
               autoComplete="new-password"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
@@ -31,20 +31,18 @@ export function AccountForms({ email }: { email: string }) {
           <form action={passwordAction} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Current password</Label>
-              <Input
+              <PasswordInput
                 id="currentPassword"
                 name="currentPassword"
-                type="password"
                 required
                 autoComplete="current-password"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="newPassword">New password</Label>
-              <Input
+              <PasswordInput
                 id="newPassword"
                 name="newPassword"
-                type="password"
                 required
                 minLength={12}
                 autoComplete="new-password"
@@ -53,10 +51,9 @@ export function AccountForms({ email }: { email: string }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmNewPassword">Confirm new password</Label>
-              <Input
+              <PasswordInput
                 id="confirmNewPassword"
                 name="confirmNewPassword"
-                type="password"
                 required
                 minLength={12}
                 autoComplete="new-password"

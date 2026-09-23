@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
@@ -29,7 +30,7 @@ export default function BackofficeLoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required autoComplete="current-password" />
+              <PasswordInput id="password" name="password" required autoComplete="current-password" />
             </div>
             {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
             <SubmitButton className="w-full" size="lg">
