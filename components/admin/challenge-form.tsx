@@ -33,6 +33,16 @@ export function ChallengeForm({
   defaultEmailDomain?: string;
 }) {
   const [state, formAction] = useActionState(action, initialState);
+  // Controlled, rather than defaultValue - a form action (like the overlap
+  // warning below) resets uncontrolled fields back to their original
+  // defaultValue once it completes, same as a native form reset, which
+  // would otherwise blank out (or on an edit, silently revert) everything
+  // the admin just typed the moment they click "Create/Save anyway".
+  const [title, setTitle] = useState(challenge?.title ?? "");
+  const [startDate, setStartDate] = useState(challenge ? toDateInputValue(challenge.startDate) : "");
+  const [endDate, setEndDate] = useState(challenge ? toDateInputValue(challenge.endDate) : "");
+  const [targetDepartments, setTargetDepartments] = useState(challenge?.targetDepartments?.join(", ") ?? "");
+  const [emailDomain, setEmailDomain] = useState(challenge?.emailDomain ?? defaultEmailDomain ?? "");
   const [dataSource, setDataSource] = useState<ChallengeDataSource>(challenge?.dataSource ?? "strava");
   const [selectedActivities, setSelectedActivities] = useState<ActivityType[]>(
     challenge?.allowedActivities ?? [...ACTIVITY_TYPES],
@@ -61,7 +71,8 @@ export function ChallengeForm({
           name="title"
           required
           placeholder="Autumn Inter-Departmental Challenge"
-          defaultValue={challenge?.title}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
         />
       </div>
 
@@ -73,7 +84,8 @@ export function ChallengeForm({
             name="startDate"
             type="date"
             required
-            defaultValue={challenge ? toDateInputValue(challenge.startDate) : undefined}
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
           />
         </div>
         <div className="space-y-2">
@@ -83,7 +95,8 @@ export function ChallengeForm({
             name="endDate"
             type="date"
             required
-            defaultValue={challenge ? toDateInputValue(challenge.endDate) : undefined}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
       </div>
@@ -188,7 +201,8 @@ export function ChallengeForm({
           id="targetDepartments"
           name="targetDepartments"
           placeholder="Engineering, Sales, HR"
-          defaultValue={challenge?.targetDepartments?.join(", ")}
+          value={targetDepartments}
+          onChange={(e) => setTargetDepartments(e.target.value)}
         />
         <p className="text-xs text-muted-foreground">
           Comma-separated. Leave blank to open the challenge to the whole company.
@@ -242,7 +256,8 @@ export function ChallengeForm({
           id="emailDomain"
           name="emailDomain"
           placeholder="acme.com"
-          defaultValue={challenge?.emailDomain ?? defaultEmailDomain ?? ""}
+          value={emailDomain}
+          onChange={(e) => setEmailDomain(e.target.value)}
         />
         <p className="text-xs text-muted-foreground">
           Only @this-domain email addresses can join via this challenge&apos;s invite link. Leave blank to allow any
