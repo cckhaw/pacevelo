@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { requestChallengeOtp, verifyChallengeOtpAndJoin } from "@/app/join/challenge/[challengeId]/actions";
@@ -162,9 +163,8 @@ export function ChallengeJoinForm({
 
       <div className="space-y-2">
         <Label htmlFor="password">{isExistingAccount ? "Password" : "Create a password"}</Label>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           required
           // Only enforced for a brand-new password - an existing account's
           // password shouldn't be forced through today's policy just to
@@ -180,9 +180,8 @@ export function ChallengeJoinForm({
       {!isExistingAccount ? (
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <Input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             required
             minLength={12}
             autoComplete="new-password"
