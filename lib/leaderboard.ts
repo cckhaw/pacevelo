@@ -1,4 +1,25 @@
 import type { ActivityType, MetricType } from "@/db/schema";
+import { METRIC_TYPE_LABELS } from "@/lib/validations";
+
+/** Shared by the leaderboard view and the per-participant breakdown dialog, so both format the same metric the same way. */
+export function formatMetricValue(value: number, metricType: keyof typeof METRIC_TYPE_LABELS) {
+  if (metricType === "total_steps") {
+    return `${Math.round(value).toLocaleString()} steps`;
+  }
+  const rounded = metricType === "active_time_mins" ? Math.round(value) : Math.round(value * 10) / 10;
+  const unit = metricType === "total_distance_km" ? "km" : metricType === "active_time_mins" ? "min" : "m";
+  return `${rounded.toLocaleString()} ${unit}`;
+}
+
+export function initialsOf(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 export interface RosterMember {
   profileId: string;

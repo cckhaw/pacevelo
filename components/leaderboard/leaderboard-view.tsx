@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { LeaderboardData } from "@/lib/leaderboard-data";
+import { formatMetricValue, initialsOf } from "@/lib/leaderboard";
 import { METRIC_TYPE_LABELS } from "@/lib/validations";
 import type { ActivityType } from "@/db/schema";
+import { ParticipantBreakdownDialog } from "@/components/leaderboard/participant-breakdown-dialog";
 
 // Strava's webhook typically lands a new activity within a few seconds, so
 // polling this often is what makes the board feel live without standing up
@@ -21,15 +23,6 @@ function timeAgoLabel(secondsAgo: number) {
   if (secondsAgo < 60) return `${secondsAgo}s ago`;
   const minutesAgo = Math.round(secondsAgo / 60);
   return `${minutesAgo}m ago`;
-}
-
-function formatValue(value: number, metricType: keyof typeof METRIC_TYPE_LABELS) {
-  if (metricType === "total_steps") {
-    return `${Math.round(value).toLocaleString()} steps`;
-  }
-  const rounded = metricType === "active_time_mins" ? Math.round(value) : Math.round(value * 10) / 10;
-  const unit = metricType === "total_distance_km" ? "km" : metricType === "active_time_mins" ? "min" : "m";
-  return `${rounded.toLocaleString()} ${unit}`;
 }
 
 function formatCountdown(msLeft: number): string {
@@ -54,16 +47,6 @@ function rankBadge(rank: number): string {
   return String(rank);
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 async function fetchLeaderboard(
   slug: string,
   challengeId: string | undefined,
@@ -82,6 +65,7 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
   const [challengeId, setChallengeId] = useState<string | undefined>(initialData.activeChallenge?.id);
   const [activityType, setActivityType] = useState<ActivityType | "all">("all");
   const [now, setNow] = useState(() => Date.now());
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const isDefaultView = challengeId === initialData.activeChallenge?.id && activityType === "all";
 
@@ -236,8 +220,9 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
               <ol className="space-y-3">
                 {view.individual.map((entry, index) => {
                   const prize = !hasEnded ? prizes[index] : undefined;
-                  return (
-                    <li key={entry.profileId} className="flex items-center gap-3">
+                  const canDrillDown = entry.value > 0;
+                  const rowContent = (
+                    <>
                       <span className="w-6 shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">
                         {rankBadge(index + 1)}
                       </span>
@@ -246,7 +231,7 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
                         <img src={entry.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
                       ) : (
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                          {initials(entry.fullName)}
+                          {initialsOf(entry.fullName)}
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
@@ -264,8 +249,23 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
                         ) : null}
                       </div>
                       <span className="shrink-0 text-sm font-semibold tabular-nums">
-                        {formatValue(entry.value, metricType)}
+                        {formatMetricValue(entry.value, metricType)}
                       </span>
+                    </>
+                  );
+                  return (
+                    <li key={entry.profileId}>
+                      {canDrillDown ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProfileId(entry.profileId)}
+                          className="flex w-full items-center gap-3 rounded-md p-1 text-left transition-colors hover:bg-secondary/50"
+                        >
+                          {rowContent}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-3 p-1">{rowContent}</div>
+                      )}
                     </li>
                   );
                 })}
@@ -291,14 +291,14 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
                     <div className="mb-1 flex items-baseline justify-between text-sm">
                       <span className="font-medium">{dept.department}</span>
                       <span className="tabular-nums text-muted-foreground">
-                        {formatValue(dept.value, metricType)} · {dept.memberCount}{" "}
+                        {formatMetricValue(dept.value, metricType)} · {dept.memberCount}{" "}
                         {dept.memberCount === 1 ? "person" : "people"}
                       </span>
                     </div>
                     <div
                       className="h-3 w-full overflow-hidden rounded-full bg-secondary"
                       role="img"
-                      aria-label={`${dept.department}: ${formatValue(dept.value, metricType)}`}
+                      aria-label={`${dept.department}: ${formatMetricValue(dept.value, metricType)}`}
                     >
                       <div
                         className="h-full rounded-full bg-primary transition-[width]"
@@ -312,6 +312,15 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
           </CardContent>
         </Card>
       </div>
+
+      <ParticipantBreakdownDialog
+        slug={slug}
+        challengeId={view.activeChallenge.id}
+        profileId={selectedProfileId}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProfileId(null);
+        }}
+      />
     </div>
   );
 }

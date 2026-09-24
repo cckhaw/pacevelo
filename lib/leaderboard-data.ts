@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, desc, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import {
   activities,
@@ -175,6 +175,116 @@ export async function getLeaderboardData(
     activeChallenge: serializeChallenge(activeChallenge),
     individual: buildIndividualStandings(roster, rows, activeChallenge.metricType),
     departmental: buildDepartmentStandings(roster, rows, activeChallenge.metricType),
+  };
+}
+
+export interface ParticipantDayBreakdown {
+  date: string; // "YYYY-MM-DD", UTC calendar day
+  value: number;
+  activityCount: number;
+}
+
+export interface ParticipantBreakdown {
+  profileId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  department: string | null;
+  metricType: MetricType;
+  totalValue: number;
+  days: ParticipantDayBreakdown[];
+}
+
+/**
+ * A single participant's day-by-day progress within one challenge, so
+ * teammates can see how someone else's total built up rather than just the
+ * final number - powers clicking a name on the leaderboard. Scoped to a
+ * specific challenge (not "all activity ever") and restricted to profiles
+ * actually enrolled in it, mirroring getLeaderboardData's roster.
+ */
+export async function getParticipantBreakdown(
+  slug: string,
+  challengeId: string,
+  profileId: string,
+): Promise<ParticipantBreakdown | null> {
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.slug, slug),
+    columns: { id: true },
+  });
+  if (!company) return null;
+
+  const challenge = await db.query.challenges.findFirst({
+    where: and(eq(challenges.id, challengeId), eq(challenges.companyId, company.id)),
+  });
+  if (!challenge) return null;
+
+  const [participant] = await db
+    .select({
+      profileId: challengeParticipants.profileId,
+      fullName: profiles.fullName,
+      avatarUrl: profiles.avatarUrl,
+      department: profiles.department,
+    })
+    .from(challengeParticipants)
+    .innerJoin(profiles, eq(challengeParticipants.profileId, profiles.id))
+    .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.profileId, profileId)));
+  if (!participant) return null;
+
+  if (challenge.dataSource === "google_health") {
+    const stepRows = await db
+      .select({ day: stepEntries.day, steps: stepEntries.steps })
+      .from(stepEntries)
+      .where(
+        and(
+          eq(stepEntries.profileId, profileId),
+          gte(stepEntries.day, challenge.startDate),
+          lte(stepEntries.day, challenge.endDate),
+        ),
+      )
+      .orderBy(asc(stepEntries.day));
+
+    const days = stepRows.map((row) => ({
+      date: row.day.toISOString().slice(0, 10),
+      value: row.steps,
+      activityCount: 1,
+    }));
+
+    return {
+      ...participant,
+      metricType: challenge.metricType,
+      totalValue: days.reduce((sum, d) => sum + d.value, 0),
+      days,
+    };
+  }
+
+  const activityRows = await db
+    .select({
+      distanceMeters: activities.distanceMeters,
+      movingTimeSeconds: activities.movingTimeSeconds,
+      elevationGainMeters: activities.elevationGainMeters,
+      startDate: activities.startDate,
+    })
+    .from(activityChallengeCredits)
+    .innerJoin(activities, eq(activityChallengeCredits.activityId, activities.id))
+    .where(and(eq(activityChallengeCredits.challengeId, challengeId), eq(activities.profileId, profileId)));
+
+  const byDay = new Map<string, { value: number; activityCount: number }>();
+  for (const row of activityRows) {
+    const date = row.startDate.toISOString().slice(0, 10);
+    const entry = byDay.get(date) ?? { value: 0, activityCount: 0 };
+    entry.value += metricValue(row, challenge.metricType);
+    entry.activityCount += 1;
+    byDay.set(date, entry);
+  }
+
+  const days = [...byDay.entries()]
+    .map(([date, d]) => ({ date, value: d.value, activityCount: d.activityCount }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    ...participant,
+    metricType: challenge.metricType,
+    totalValue: days.reduce((sum, d) => sum + d.value, 0),
+    days,
   };
 }
 
