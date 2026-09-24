@@ -68,8 +68,20 @@ export async function getLeaderboardData(
   }
 
   const now = new Date();
-  let challengeList: (typeof challenges.$inferSelect)[] = [];
-  let activeChallenge: (typeof challenges.$inferSelect) | null = null;
+  // The dropdown's full option list - every currently-active challenge,
+  // fetched unconditionally so picking one from it (which re-requests with
+  // an explicit challengeId, below) doesn't make the dropdown itself
+  // collapse to just the one selected challenge on the next fetch.
+  let challengeList = await db.query.challenges.findMany({
+    where: and(
+      eq(challenges.companyId, company.id),
+      eq(challenges.isActive, true),
+      lte(challenges.startDate, now),
+      gte(challenges.endDate, now),
+    ),
+    orderBy: desc(challenges.startDate),
+  });
+  let activeChallenge: (typeof challenges.$inferSelect) | null = challengeList[0] ?? null;
 
   if (options.challengeId) {
     // An explicit request for one challenge (e.g. an archived one's "final
@@ -79,21 +91,13 @@ export async function getLeaderboardData(
     });
     if (requested) {
       activeChallenge = requested;
-      challengeList = [requested];
+      // Keep it selectable even if it's outside the currently-active list
+      // (e.g. already ended) - the dropdown still shows every other active
+      // challenge alongside it, rather than shrinking to just this one.
+      if (!challengeList.some((c) => c.id === requested.id)) {
+        challengeList = [requested, ...challengeList];
+      }
     }
-  }
-
-  if (!activeChallenge) {
-    challengeList = await db.query.challenges.findMany({
-      where: and(
-        eq(challenges.companyId, company.id),
-        eq(challenges.isActive, true),
-        lte(challenges.startDate, now),
-        gte(challenges.endDate, now),
-      ),
-      orderBy: desc(challenges.startDate),
-    });
-    activeChallenge = challengeList[0] ?? null;
   }
 
   if (!activeChallenge) {
@@ -242,11 +246,23 @@ export async function getParticipantBreakdown(
       )
       .orderBy(asc(stepEntries.day));
 
-    const days = stepRows.map((row) => ({
-      date: row.day.toISOString().slice(0, 10),
-      value: row.steps,
-      activityCount: 1,
-    }));
+    // Grouped defensively by calendar day rather than mapped 1:1 from rows:
+    // the sync path (lib/google-health/sync.ts) always upserts one
+    // midnight-UTC-anchored row per profile per day, so this doesn't
+    // normally collapse anything, but it keeps a stray/legacy non-anchored
+    // row from producing two entries for what's really the same day (which
+    // would both inflate the total and give the day list a duplicate key).
+    const byDay = new Map<string, { value: number; activityCount: number }>();
+    for (const row of stepRows) {
+      const date = row.day.toISOString().slice(0, 10);
+      const entry = byDay.get(date) ?? { value: 0, activityCount: 0 };
+      entry.value += row.steps;
+      entry.activityCount += 1;
+      byDay.set(date, entry);
+    }
+    const days = [...byDay.entries()]
+      .map(([date, d]) => ({ date, value: d.value, activityCount: d.activityCount }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     return {
       ...participant,
