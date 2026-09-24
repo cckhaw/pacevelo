@@ -174,6 +174,10 @@ export async function getDailySteps(
   let rawPointCount = 0;
   let sampleRawPoint: GoogleHealthDataPoint | null = null;
   let pageToken: string | undefined;
+  // Guards against the exact same point being summed twice - e.g. a
+  // pagination boundary returning it on both pages. Keyed on its interval
+  // and count, since the response doesn't expose a per-point id.
+  const seenPointKeys = new Set<string>();
 
   do {
     // Per Google's REST reference (users.dataTypes.dataPoints.list), the
@@ -205,6 +209,11 @@ export async function getDailySteps(
       if (!sampleRawPoint) sampleRawPoint = point;
       const count = Number(point.steps?.count ?? 0);
       if (!count) continue;
+
+      const pointKey = `${point.steps.interval.startTime}|${point.steps.interval.endTime}|${count}`;
+      if (seenPointKeys.has(pointKey)) continue;
+      seenPointKeys.add(pointKey);
+
       const civilDate = point.steps.interval.civilStartTime?.date;
       const day = civilDate
         ? `${civilDate.year}-${String(civilDate.month).padStart(2, "0")}-${String(civilDate.day).padStart(2, "0")}`
