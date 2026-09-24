@@ -21,19 +21,15 @@ export function SyncGoogleHealthButton() {
       }
       const daysSynced = result.daysSynced ?? 0;
       let text = `Synced ${daysSynced} day${daysSynced === 1 ? "" : "s"} of steps.`;
-      // Diagnostics for while the response shape is still unverified (see
-      // README caveats) - tells apart "nothing synced to Google Health yet"
-      // from "data came back but this app can't read its value field", and
-      // surfaces the raw point count even on a normal sync so an unusually
-      // high count (a possible sign of overlapping/duplicate data from more
-      // than one connected app or device) is easy to spot.
+      // Diagnostics - tells apart "nothing synced to Google Health yet"
+      // from "data came back but this app can't read its value field".
       if (daysSynced === 0) {
         text +=
-          result.rawPointCount === 0
-            ? " Google Health returned no data points for the last 30 days - check that steps are actually being recorded/synced to Google Health on your phone."
-            : ` Google returned ${result.rawPointCount} data point(s) but none had a readable step count - sample: ${JSON.stringify(result.sampleRawPoint)}`;
+          result.rollupBucketCount === 0
+            ? " Google Health returned no data for the last 30 days - check that steps are actually being recorded/synced to Google Health on your phone."
+            : ` Google returned ${result.rollupBucketCount} day(s) of rollup data but none had a readable step count - sample: ${JSON.stringify(result.sampleRollupPoint)}`;
       } else {
-        text += ` (${result.rawPointCount} raw data point(s) from Google.)`;
+        text += ` (${result.rollupBucketCount} day(s) of rollup data from Google.)`;
       }
       setMessage(text);
     });
