@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import {
   activities,
@@ -11,12 +11,13 @@ import {
   profiles,
   stepEntries,
 } from "@/db/schema";
-import type { ActivityType, ChallengeDataSource } from "@/db/schema";
+import type { ActivityType, ChallengeDataSource, MetricType } from "@/db/schema";
 import {
   buildDepartmentStandings,
   buildDepartmentStepStandings,
   buildIndividualStandings,
   buildIndividualStepStandings,
+  metricValue,
   type DepartmentStanding,
   type IndividualStanding,
 } from "@/lib/leaderboard";
@@ -175,4 +176,125 @@ export async function getLeaderboardData(
     individual: buildIndividualStandings(roster, rows, activeChallenge.metricType),
     departmental: buildDepartmentStandings(roster, rows, activeChallenge.metricType),
   };
+}
+
+export interface EmployeeChallengeProgress {
+  challengeId: string;
+  title: string;
+  metricType: MetricType;
+  dataSource: ChallengeDataSource;
+  isActive: boolean;
+  value: number;
+}
+
+export interface EmployeeProgress {
+  profileId: string;
+  fullName: string;
+  email: string;
+  department: string | null;
+  challenges: EmployeeChallengeProgress[];
+}
+
+/**
+ * Every employee in a company, and their progress in each challenge
+ * they've joined - powers the admin "all employees" view. Mirrors
+ * getLeaderboardData's two scoring pipelines (Strava activity credits vs.
+ * Google Health step entries), but per-challenge across the whole company
+ * rather than for one active challenge.
+ */
+export async function getCompanyEmployeeProgress(companyId: string): Promise<EmployeeProgress[]> {
+  const [employees, companyChallenges] = await Promise.all([
+    db.query.profiles.findMany({
+      where: and(eq(profiles.companyId, companyId), eq(profiles.role, "employee")),
+      orderBy: (p, { asc }) => [asc(p.fullName)],
+    }),
+    db.query.challenges.findMany({ where: eq(challenges.companyId, companyId) }),
+  ]);
+
+  const challengeById = new Map(companyChallenges.map((c) => [c.id, c]));
+  const companyChallengeIds = companyChallenges.map((c) => c.id);
+
+  const participantRows = companyChallengeIds.length
+    ? await db
+        .select({ profileId: challengeParticipants.profileId, challengeId: challengeParticipants.challengeId })
+        .from(challengeParticipants)
+        .where(inArray(challengeParticipants.challengeId, companyChallengeIds))
+    : [];
+
+  const valueByChallengeAndProfile = new Map<string, Map<string, number>>();
+  function addValue(challengeId: string, profileId: string, amount: number) {
+    const byProfile = valueByChallengeAndProfile.get(challengeId) ?? new Map<string, number>();
+    byProfile.set(profileId, (byProfile.get(profileId) ?? 0) + amount);
+    valueByChallengeAndProfile.set(challengeId, byProfile);
+  }
+
+  const stravaChallengeIds = companyChallenges.filter((c) => c.dataSource === "strava").map((c) => c.id);
+  if (stravaChallengeIds.length > 0) {
+    const activityRows = await db
+      .select({
+        challengeId: activityChallengeCredits.challengeId,
+        profileId: activities.profileId,
+        distanceMeters: activities.distanceMeters,
+        movingTimeSeconds: activities.movingTimeSeconds,
+        elevationGainMeters: activities.elevationGainMeters,
+      })
+      .from(activityChallengeCredits)
+      .innerJoin(activities, eq(activityChallengeCredits.activityId, activities.id))
+      .where(inArray(activityChallengeCredits.challengeId, stravaChallengeIds));
+
+    for (const row of activityRows) {
+      const challenge = challengeById.get(row.challengeId);
+      if (!challenge) continue;
+      addValue(row.challengeId, row.profileId, metricValue(row, challenge.metricType));
+    }
+  }
+
+  for (const challenge of companyChallenges) {
+    if (challenge.dataSource !== "google_health") continue;
+    const stepRows = await db
+      .select({ profileId: stepEntries.profileId, steps: stepEntries.steps })
+      .from(challengeParticipants)
+      .innerJoin(stepEntries, eq(challengeParticipants.profileId, stepEntries.profileId))
+      .where(
+        and(
+          eq(challengeParticipants.challengeId, challenge.id),
+          gte(stepEntries.day, challenge.startDate),
+          lte(stepEntries.day, challenge.endDate),
+        ),
+      );
+    for (const row of stepRows) {
+      addValue(challenge.id, row.profileId, row.steps);
+    }
+  }
+
+  const challengeIdsByProfile = new Map<string, string[]>();
+  for (const row of participantRows) {
+    const list = challengeIdsByProfile.get(row.profileId) ?? [];
+    list.push(row.challengeId);
+    challengeIdsByProfile.set(row.profileId, list);
+  }
+
+  const now = Date.now();
+  return employees.map((employee) => {
+    const employeeChallenges = (challengeIdsByProfile.get(employee.id) ?? [])
+      .map((id) => challengeById.get(id))
+      .filter((c): c is typeof challenges.$inferSelect => Boolean(c))
+      .map((c) => ({
+        challengeId: c.id,
+        title: c.title,
+        metricType: c.metricType,
+        dataSource: c.dataSource,
+        isActive: c.isActive && c.endDate.getTime() >= now,
+        value: valueByChallengeAndProfile.get(c.id)?.get(employee.id) ?? 0,
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    return {
+      profileId: employee.id,
+      fullName: employee.fullName,
+      email: employee.email,
+      department: employee.department,
+      challenges: employeeChallenges,
+    };
+  });
 }

@@ -37,9 +37,6 @@ export default async function AdminDashboardPage() {
             <p className="text-sm text-muted-foreground">Welcome back, {profile.fullName.split(" ")[0]}.</p>
           </div>
           <div className="flex gap-2">
-            <Button asChild variant="outline" className="flex-1 sm:flex-none">
-              <Link href={`/company/${company?.slug}`}>View leaderboard</Link>
-            </Button>
             <Button asChild className="flex-1 sm:flex-none">
               <Link href="/admin/challenges/new">
                 <Plus className="h-4 w-4" /> New challenge
@@ -56,6 +53,9 @@ export default async function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold">{employeeCount ?? 0}</p>
+              <Link href="/admin/employees" className="text-xs text-primary underline-offset-4 hover:underline">
+                View all
+              </Link>
             </CardContent>
           </Card>
           <Card>

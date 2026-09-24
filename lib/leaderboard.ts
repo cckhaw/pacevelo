@@ -42,7 +42,7 @@ export interface DepartmentStanding {
   memberCount: number;
 }
 
-function metricValue(
+export function metricValue(
   row: Pick<LeaderboardActivityRow, "distanceMeters" | "movingTimeSeconds" | "elevationGainMeters">,
   metricType: MetricType,
 ): number {
