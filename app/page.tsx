@@ -24,7 +24,7 @@ const FEATURES = [
   },
   {
     icon: Footprints,
-    title: "Or rank by steps",
+    title: "Rank by steps",
     description:
       "Prefer a simpler wellness challenge? Pick Google Health as the data source and rank by daily step totals instead.",
   },
@@ -131,10 +131,7 @@ export default function Home() {
         <section className="bg-secondary">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:items-center lg:gap-16">
             <div>
-              <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                Built for 100–500 person companies
-              </Badge>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
                 Corporate athletic challenges, live in under 5 minutes
               </h1>
               <p className="mt-4 max-w-md text-lg text-muted-foreground">
@@ -172,7 +169,7 @@ export default function Home() {
                   {[
                     { name: "A. Rahman", dept: "Engineering", value: 182_400, pct: 100 },
                     { name: "S. Tan", dept: "Sales", value: 156_900, pct: 86 },
-                    { name: "J. Lee", dept: "HR", value: 121_050, pct: 66 },
+                    { name: "J. Lee", dept: "Marketing", value: 121_050, pct: 66 },
                   ].map((row, i) => (
                     <li key={row.name}>
                       <div className="mb-1 flex items-baseline justify-between text-sm">
@@ -215,7 +212,7 @@ export default function Home() {
         {/* Features */}
         <section id="features" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <SectionEyebrow>Everything HR needs</SectionEyebrow>
+            <SectionEyebrow>Everything a company admin needs</SectionEyebrow>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
               One dashboard for challenges, leaderboards, and engagement
             </h2>
