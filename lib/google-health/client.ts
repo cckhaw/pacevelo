@@ -125,45 +125,52 @@ export async function revokeGoogleHealthToken(token: string): Promise<void> {
   }
 }
 
-// The real response shape (confirmed from a live sync) nests the value and
-// interval under a key named after the data type ("steps" here) - not
-// under generic top-level "interval"/"value" fields as first guessed.
-// civilStartTime gives the athlete's own local calendar date directly, so
-// day-bucketing doesn't have to assume UTC (which would misfile points
-// recorded shortly after local midnight in timezones ahead of UTC).
-interface GoogleHealthDataPoint {
-  steps: {
-    interval: {
-      startTime: string;
-      endTime: string;
-      civilStartTime?: { date: { year: number; month: number; day: number } };
-    };
-    count?: string;
-  };
+// Confirmed against Google's own API discovery document
+// (health.googleapis.com/$discovery/rest?version=v4 - developers.google.com
+// itself is blocked in this environment's egress policy, but the discovery
+// doc is served from the API host and isn't). Summing raw dataPoints
+// (dataPoints.list) double-counts when an athlete has more than one
+// connected source reporting steps for the same day (e.g. a phone's own
+// step counter and a paired watch app both syncing to Google Health/Health
+// Connect) - dataPoints.list has no way to filter or dedupe by source. The
+// dailyRollUp endpoint is Google's dedicated fix for exactly this: its
+// response is explicitly documented as data "reconciled" across all of the
+// athlete's data sources into one authoritative total per civil day, so
+// this app doesn't need to (and structurally can't, from the list endpoint
+// alone) dedupe overlapping-but-not-identical points across sources itself.
+interface GoogleHealthCivilDate {
+  year: number;
+  month: number;
+  day: number;
 }
 
-interface GoogleHealthDataPointsResponse {
-  dataPoints?: GoogleHealthDataPoint[];
-  nextPageToken?: string;
+interface GoogleHealthDailyRollupDataPoint {
+  civilStartTime?: { date: GoogleHealthCivilDate };
+  steps?: { stepsSum?: string };
+}
+
+interface GoogleHealthDailyRollUpResponse {
+  rollupDataPoints?: GoogleHealthDailyRollupDataPoint[];
 }
 
 export interface DailyStepsResult {
   byDay: Map<string, number>;
-  // Diagnostics for while the response shape is still unverified (see
-  // README caveats) - lets a 0-steps sync be told apart from "Google
-  // returned no data points at all" vs. "data points came back but this
-  // code doesn't know how to read their value field".
-  rawPointCount: number;
-  sampleRawPoint: GoogleHealthDataPoint | null;
+  // Diagnostics surfaced on "Sync now" (see SyncGoogleHealthButton) - lets
+  // a 0-day sync be told apart from "Google returned no rollup data at
+  // all" vs. "rollup buckets came back but none had a readable step sum".
+  rollupBucketCount: number;
+  sampleRollupPoint: GoogleHealthDailyRollupDataPoint | null;
+}
+
+function civilDateOf(d: Date): GoogleHealthCivilDate {
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
 /**
- * Fetches raw step data points between `startTime` and `endTime` and sums
- * them per calendar day in the athlete's own local time (via each point's
- * civilStartTime, not a UTC cut, which would misfile points recorded
- * shortly after local midnight in timezones ahead of UTC). Returns a map
- * of day ("YYYY-MM-DD") -> steps, plus raw-response diagnostics (see
- * DailyStepsResult).
+ * Fetches one reconciled step total per civil day between `startTime` and
+ * `endTime` via Google's dailyRollUp endpoint, rather than summing raw
+ * dataPoints client-side (see comment above). Returns a map of day
+ * ("YYYY-MM-DD") -> steps, plus response diagnostics (see DailyStepsResult).
  */
 export async function getDailySteps(
   accessToken: string,
@@ -171,48 +178,49 @@ export async function getDailySteps(
   endTime: Date,
 ): Promise<DailyStepsResult> {
   const byDay = new Map<string, number>();
-  let rawPointCount = 0;
-  let sampleRawPoint: GoogleHealthDataPoint | null = null;
-  let pageToken: string | undefined;
 
-  do {
-    // Per Google's REST reference (users.dataTypes.dataPoints.list), the
-    // filter must reference fields as "{data_type}.interval.{field}" - the
-    // data type name (here "steps", matching the dataTypes/steps path
-    // segment below) is a required prefix, and only >= and < are supported
-    // (not <=). Google rejects "steps.interval.end_time" as unfilterable
-    // ("Member ... is not supported for filtering") - like their
-    // total_calories example, steps only supports filtering on
-    // interval.start_time, so both the lower and upper bound of the range
-    // use that same field (not a start/end pair).
-    const params = new URLSearchParams({
-      page_size: "1000",
-      filter: `steps.interval.start_time >= "${startTime.toISOString()}" AND steps.interval.start_time < "${endTime.toISOString()}"`,
-    });
-    if (pageToken) params.set("page_token", pageToken);
+  // range is a closed-open [start, end) range of civil dates, so the end
+  // bound is pushed one day past endTime's own calendar day - otherwise
+  // "today" (endTime's day, usually still in progress) would be excluded
+  // entirely instead of returning its steps-so-far.
+  const rangeEnd = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
 
-    const response = await fetch(`${GOOGLE_HEALTH_API_BASE}/users/me/dataTypes/steps/dataPoints?${params}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+  const response = await fetch(`${GOOGLE_HEALTH_API_BASE}/users/me/dataTypes/steps/dataPoints:dailyRollUp`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      range: {
+        start: { date: civilDateOf(startTime) },
+        end: { date: civilDateOf(rangeEnd) },
+      },
+      windowSizeDays: 1,
+    }),
+  });
 
-    if (!response.ok) {
-      throw new Error(`Google Health steps fetch failed: ${response.status} ${await response.text()}`);
-    }
+  if (!response.ok) {
+    throw new Error(`Google Health steps rollup fetch failed: ${response.status} ${await response.text()}`);
+  }
 
-    const data: GoogleHealthDataPointsResponse = await response.json();
-    for (const point of data.dataPoints ?? []) {
-      rawPointCount++;
-      if (!sampleRawPoint) sampleRawPoint = point;
-      const count = Number(point.steps?.count ?? 0);
-      if (!count) continue;
-      const civilDate = point.steps.interval.civilStartTime?.date;
-      const day = civilDate
-        ? `${civilDate.year}-${String(civilDate.month).padStart(2, "0")}-${String(civilDate.day).padStart(2, "0")}`
-        : point.steps.interval.startTime.slice(0, 10); // fallback: UTC calendar day, if civilStartTime is ever missing
-      byDay.set(day, (byDay.get(day) ?? 0) + count);
-    }
-    pageToken = data.nextPageToken;
-  } while (pageToken);
+  const data: GoogleHealthDailyRollUpResponse = await response.json();
+  const rollupDataPoints = data.rollupDataPoints ?? [];
+  let sampleRollupPoint: GoogleHealthDailyRollupDataPoint | null = null;
 
-  return { byDay, rawPointCount, sampleRawPoint };
+  for (const point of rollupDataPoints) {
+    if (!sampleRollupPoint) sampleRollupPoint = point;
+    const stepsSum = Number(point.steps?.stepsSum ?? 0);
+    if (!stepsSum) continue;
+
+    const civilDate = point.civilStartTime?.date;
+    if (!civilDate) continue;
+    const day = `${civilDate.year}-${String(civilDate.month).padStart(2, "0")}-${String(civilDate.day).padStart(2, "0")}`;
+    // windowSizeDays: 1 means dailyRollUp returns at most one bucket per
+    // civil day, so this is a direct set (not an accumulating sum) -
+    // Google's own reconciled total for that day, not a partial to add to.
+    byDay.set(day, stepsSum);
+  }
+
+  return { byDay, rollupBucketCount: rollupDataPoints.length, sampleRollupPoint };
 }

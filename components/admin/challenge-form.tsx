@@ -77,7 +77,10 @@ export function ChallengeForm({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        {/* min-w-0 lets each column shrink below a date input's native
+            intrinsic width, which otherwise pushes the grid wider than the
+            screen on narrow phones. */}
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="startDate">Start date</Label>
           <Input
             id="startDate"
@@ -88,7 +91,7 @@ export function ChallengeForm({
             onChange={(e) => setStartDate(e.target.value)}
           />
         </div>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="endDate">End date</Label>
           <Input
             id="endDate"

@@ -13,10 +13,9 @@ const SYNC_WINDOW_DAYS = 30;
 
 export interface SyncStepsResult {
   daysSynced: number;
-  // Diagnostics for while the response shape is still unverified (see
-  // README caveats) - see DailyStepsResult for what these mean.
-  rawPointCount: number;
-  sampleRawPoint: unknown;
+  // Diagnostics - see DailyStepsResult for what these mean.
+  rollupBucketCount: number;
+  sampleRollupPoint: unknown;
 }
 
 /** Pulls recent daily step totals from Google Health and upserts them into step_entries. */
@@ -26,9 +25,9 @@ export async function syncStepsForProfile(profileId: string): Promise<SyncStepsR
   const endTime = new Date();
   const startTime = new Date(endTime.getTime() - SYNC_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  const { byDay, rawPointCount, sampleRawPoint } = await getDailySteps(accessToken, startTime, endTime);
+  const { byDay, rollupBucketCount, sampleRollupPoint } = await getDailySteps(accessToken, startTime, endTime);
   if (byDay.size === 0) {
-    return { daysSynced: 0, rawPointCount, sampleRawPoint };
+    return { daysSynced: 0, rollupBucketCount, sampleRollupPoint };
   }
 
   const rows = [...byDay.entries()].map(([day, steps]) => ({
@@ -45,5 +44,5 @@ export async function syncStepsForProfile(profileId: string): Promise<SyncStepsR
       set: { steps: sql`excluded.steps`, updatedAt: sql`now()` },
     });
 
-  return { daysSynced: rows.length, rawPointCount, sampleRawPoint };
+  return { daysSynced: rows.length, rollupBucketCount, sampleRollupPoint };
 }
