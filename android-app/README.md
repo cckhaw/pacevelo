@@ -58,6 +58,16 @@ cd android-app
 # output: app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## Distributing a rebuild
+
+The dashboard (`/dashboard/devices`) links to a committed copy of this .apk
+at `public/downloads/pacevelo-steps.apk` in the repo root, served as a
+static file of the same Vercel deployment (see `NEXT_PUBLIC_ANDROID_APK_URL`
+in `.env.example`). To ship a rebuild: `./gradlew assembleDebug`, overwrite
+`../public/downloads/pacevelo-steps.apk` with the new
+`app/build/outputs/apk/debug/app-debug.apk`, commit, and redeploy - the
+download URL itself doesn't change.
+
 ## What's deliberately left out (for a fast, low-risk first build)
 
 - No release signing / Play Store listing - sideload only.
