@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { ArrowLeft, CheckCircle2, Download, Info, Link2, Smartphone, TriangleAlert } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, Download, Info, Link2, Smartphone, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,12 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getLatestStepSync, getOrCreateDeviceSyncToken } from "@/lib/device-sync";
-import { IOS_SHORTCUT_NAME, iosShortcutInstallUrl, iosShortcutPersonalizeUrl } from "@/lib/ios-shortcut";
+import {
+  IOS_SHORTCUT_NAME,
+  iosShortcutAutomationInstallUrl,
+  iosShortcutInstallUrl,
+  iosShortcutPersonalizeUrl,
+} from "@/lib/ios-shortcut";
 import { androidApkDownloadUrl } from "@/lib/android-apk";
 import { formatRelativeTime } from "@/lib/time";
 import { signOut } from "@/app/login/actions";
@@ -49,6 +54,7 @@ export default async function DevicesPage() {
 
   const shortcutInstallUrl = iosShortcutInstallUrl();
   const shortcutPersonalizeUrl = iosShortcutPersonalizeUrl(syncUrl);
+  const shortcutAutomationInstallUrl = iosShortcutAutomationInstallUrl();
 
   const apkUrl = androidApkDownloadUrl();
   const apkQrSvg = apkUrl ? await QRCode.toString(apkUrl, { type: "svg", margin: 1, width: 220 }) : null;
@@ -112,7 +118,9 @@ export default async function DevicesPage() {
             <CardTitle className="text-base">iPhone: install the PaceVelo Shortcut</CardTitle>
             <CardDescription>
               {shortcutInstallUrl
-                ? "Two taps, then it reports automatically."
+                ? shortcutAutomationInstallUrl
+                  ? "Three taps, then it syncs automatically every night."
+                  : "Two taps, then it reports automatically."
                 : "A few minutes, once. No app install required."}
             </CardDescription>
           </CardHeader>
@@ -149,6 +157,20 @@ export default async function DevicesPage() {
                       you&apos;ve installed the shortcut on, and again any time you get a new setup link.
                     </p>
                   </li>
+                  {shortcutAutomationInstallUrl ? (
+                    <li>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={shortcutAutomationInstallUrl}>
+                          <Clock className="h-3.5 w-3.5" /> Turn on daily automatic sync
+                        </a>
+                      </Button>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Opens the Shortcuts app - tap <strong>Add Automation</strong> there. Silently runs the
+                        shortcut every night at 11:55 PM so you never have to open the app. Only needed once per
+                        phone.
+                      </p>
+                    </li>
+                  ) : null}
                 </ol>
                 <details className="text-sm">
                   <summary className="cursor-pointer text-muted-foreground">
