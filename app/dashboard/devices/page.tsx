@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { ArrowLeft, CheckCircle2, Download, Link2, Smartphone } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, Info, Link2, Smartphone, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { profiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getLatestStepSync, getOrCreateDeviceSyncToken } from "@/lib/device-sync";
 import { IOS_SHORTCUT_NAME, iosShortcutInstallUrl, iosShortcutPersonalizeUrl } from "@/lib/ios-shortcut";
+import { androidApkDownloadUrl } from "@/lib/android-apk";
 import { formatRelativeTime } from "@/lib/time";
 import { signOut } from "@/app/login/actions";
 
@@ -48,6 +49,9 @@ export default async function DevicesPage() {
 
   const shortcutInstallUrl = iosShortcutInstallUrl();
   const shortcutPersonalizeUrl = iosShortcutPersonalizeUrl(syncUrl);
+
+  const apkUrl = androidApkDownloadUrl();
+  const apkQrSvg = apkUrl ? await QRCode.toString(apkUrl, { type: "svg", margin: 1, width: 220 }) : null;
 
   return (
     <div className="min-h-screen bg-secondary">
@@ -113,6 +117,13 @@ export default async function DevicesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+              <TriangleAlert className="mt-0.5 h-3.5 w-3.5 flex-none" />
+              <span>
+                Do this <strong>on your iPhone</strong>, in Safari - not on a laptop or desktop. These links open the
+                Shortcuts app, which only exists on iOS, so tapping them anywhere else won&apos;t work.
+              </span>
+            </div>
             {shortcutInstallUrl ? (
               <div className="space-y-4">
                 <ol className="list-decimal space-y-3 pl-5 text-sm">
@@ -157,13 +168,57 @@ export default async function DevicesPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Android: companion app</CardTitle>
-            <CardDescription>Coming soon.</CardDescription>
+            <CardDescription>
+              {apkUrl ? "A small app you sideload once - then it reports automatically." : "Coming soon."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              We&apos;re building a small Android app you&apos;ll be able to sideload and set up by scanning the QR
-              code above. Check back soon.
-            </p>
+            {apkUrl ? (
+              <div className="space-y-4">
+                <ol className="list-decimal space-y-3 pl-5 text-sm">
+                  <li>
+                    <Button asChild size="sm">
+                      <a href={apkUrl}>
+                        <Download className="h-3.5 w-3.5" /> Download the app (.apk)
+                      </a>
+                    </Button>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      On your phone, tap this to download directly - or scan the QR code below with your phone&apos;s
+                      camera if you&apos;re reading this page on a computer.
+                    </p>
+                    <div className="mt-2 flex justify-center rounded-md border bg-card p-4">
+                      <div
+                        className="[&_svg]:h-[140px] [&_svg]:w-[140px]"
+                        dangerouslySetInnerHTML={{ __html: apkQrSvg! }}
+                      />
+                    </div>
+                  </li>
+                  <li>
+                    <div className="flex items-start gap-2 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-900 dark:text-sky-200">
+                      <Info className="mt-0.5 h-3.5 w-3.5 flex-none" />
+                      <span>
+                        Since this isn&apos;t from the Play Store, Android blocks the install by default. When you
+                        open the downloaded file, tap <strong>Settings</strong> on the warning that appears, then
+                        turn on <strong>Allow from this source</strong> for the app you downloaded it with (Chrome,
+                        Files, etc.) and go back to install it. Exact wording varies by phone - if you don&apos;t see
+                        that prompt, it&apos;s usually under <strong>Settings → Apps → Special access → Install
+                        unknown apps</strong>.
+                      </span>
+                    </div>
+                  </li>
+                  <li>
+                    Open the installed <strong>PaceVelo Steps</strong> app and tap <strong>Scan setup QR code</strong>
+                    , then scan the &quot;Report steps from your phone&quot; QR code above. It&apos;ll sync
+                    immediately and then keep reporting automatically in the background.
+                  </li>
+                </ol>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                We&apos;re building a small Android app you&apos;ll be able to sideload and set up by scanning the QR
+                code above. Check back soon.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

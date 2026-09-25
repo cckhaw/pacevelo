@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Brand teal used for button fills - kept the same in both light and
+         dark mode since it always sits on its own filled surface. -->
     <color name="pacevelo_primary">#0F766E</color>
-    <color name="pacevelo_primary_dark">#0B5A54</color>
-    <color name="pacevelo_background">#F1F5F4</color>
     <color name="pacevelo_on_primary">#FFFFFF</color>
+
+    <!-- Everything below has a values-night/colors.xml override, since
+         these sit directly against the window background and need enough
+         contrast in both modes. -->
+    <color name="pacevelo_background">#F1F5F4</color>
+    <color name="pacevelo_accent_text">#0B5A54</color>
+    <color name="pacevelo_text_primary">#1F2937</color>
+    <color name="pacevelo_text_secondary">#4B5563</color>
+    <color name="pacevelo_text_hint">#6B7280</color>
 </resources>

@@ -70,4 +70,7 @@ cd android-app
   model of the URL itself (treat it like a password, per the dashboard's
   own warning) - fine for a pilot, worth hardening (Android Keystore-backed
   encrypted prefs) before a wider rollout.
-- No UI polish beyond a single functional screen.
+- No UI polish beyond a single functional screen - though it does follow the
+  system's light/dark mode setting correctly (`values-night/` resources),
+  since the single screen is common enough to hit that a mismatched
+  background/text combo would be the first thing a participant notices.

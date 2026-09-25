@@ -2,8 +2,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.PaceVeloStepReporter" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/pacevelo_primary</item>
-        <item name="colorPrimaryDark">@color/pacevelo_primary_dark</item>
+        <item name="colorPrimaryDark">@color/pacevelo_background</item>
         <item name="colorAccent">@color/pacevelo_primary</item>
         <item name="android:windowBackground">@color/pacevelo_background</item>
+        <!-- Status/nav bars blend into the app background rather than
+             showing a separate teal bar; windowLightStatusBar keeps their
+             icons legible against it (dark icons on our light background
+             here, flipped to light icons in values-night for the dark
+             background). -->
+        <item name="android:statusBarColor">@color/pacevelo_background</item>
+        <item name="android:navigationBarColor">@color/pacevelo_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
     </style>
 </resources>
