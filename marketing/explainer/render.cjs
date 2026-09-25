@@ -9,10 +9,12 @@ const { chromium } = require("playwright-core");
 const { spawn } = require("child_process");
 const path = require("path");
 
+const site = path.join(__dirname, "../../public/explainer");
+
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : def; };
 const fps = Number(opt("fps", 30));
-const out = path.resolve(opt("out", path.join(__dirname, "pacevelo-explainer.mp4")));
+const out = path.resolve(opt("out", path.join(site, "pacevelo-explainer.mp4")));
 const audio = opt("audio", null);
 const stills = opt("stills", null);
 const ffmpeg = process.env.FFMPEG || "ffmpeg";
@@ -20,7 +22,7 @@ const ffmpeg = process.env.FFMPEG || "ffmpeg";
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-  await page.goto("file://" + path.join(__dirname, "index.html") + "?render");
+  await page.goto("file://" + path.join(site, "index.html") + "?render");
   await page.evaluate(() => document.fonts.ready);
   const duration = await page.evaluate(() => PV.DURATION);
   const shoot = async (t, type = "jpeg") => {

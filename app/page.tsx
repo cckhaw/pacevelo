@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Footprints,
   MessageSquare,
+  PlayCircle,
   ShieldCheck,
   Trophy,
   Users,
@@ -108,6 +109,9 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <LogoInline markSize={32} />
           <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground sm:flex">
+            <Link href="#video" className="hover:text-foreground">
+              Watch
+            </Link>
             <Link href="#features" className="hover:text-foreground">
               Features
             </Link>
@@ -148,6 +152,12 @@ export default function Home() {
                   <Link href="/contact">Contact Us</Link>
                 </Button>
               </div>
+              <Link
+                href="#video"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              >
+                <PlayCircle className="h-4 w-4" /> Watch the 90-second explainer
+              </Link>
               <p className="mt-6 text-sm text-muted-foreground">
                 Joining a challenge? Use the invite link your company admin sent you.
               </p>
@@ -207,6 +217,33 @@ export default function Home() {
               <p className="mt-1 text-sm text-muted-foreground">Leaderboards and Slack updates as activity syncs</p>
             </div>
           </div>
+        </section>
+
+        {/* Explainer video */}
+        <section id="video" className="mx-auto max-w-5xl scroll-mt-20 px-4 pt-20 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <SectionEyebrow>See it in 90 seconds</SectionEyebrow>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+              From spreadsheet chaos to a company that moves together
+            </h2>
+          </div>
+          <div className="mt-10 overflow-hidden rounded-xl border bg-black shadow-lg">
+            <video
+              className="aspect-video w-full"
+              controls
+              playsInline
+              preload="none"
+              poster="/explainer/poster.jpg"
+            >
+              <source src="/explainer/pacevelo-explainer.mp4" type="video/mp4" />
+            </video>
+          </div>
+          <p className="mt-3 text-center text-sm text-muted-foreground">
+            Prefer to scrub through it?{" "}
+            <a href="/explainer/index.html" className="font-medium text-primary hover:underline">
+              Open the interactive version
+            </a>
+          </p>
         </section>
 
         {/* Features */}
