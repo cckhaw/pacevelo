@@ -21,8 +21,19 @@ export function iosShortcutInstallUrl(): string | null {
   return url && url.trim() ? url : null;
 }
 
-/** Deep link that runs the (already-installed) shortcut once with `setupUrl` as its input, which the shortcut saves for every future silent run. */
+/**
+ * Deep link that runs the (already-installed) shortcut once with `setupUrl`
+ * as its input, which the shortcut saves for every future silent run.
+ *
+ * Built by hand rather than via URLSearchParams: that encodes spaces as `+`
+ * (the application/x-www-form-urlencoded convention), but the Shortcuts app
+ * doesn't decode `+` back to a space in its `name` param - it looks up the
+ * shortcut by that literal string and fails with "The file doesn't exist."
+ * Percent-encoding (%20) is what it actually expects.
+ */
 export function iosShortcutPersonalizeUrl(setupUrl: string): string {
-  const params = new URLSearchParams({ name: IOS_SHORTCUT_NAME, input: "text", text: setupUrl });
-  return `shortcuts://run-shortcut?${params.toString()}`;
+  const name = encodeURIComponent(IOS_SHORTCUT_NAME);
+  const input = encodeURIComponent("text");
+  const text = encodeURIComponent(setupUrl);
+  return `shortcuts://run-shortcut?name=${name}&input=${input}&text=${text}`;
 }
