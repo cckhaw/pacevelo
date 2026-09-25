@@ -23,7 +23,7 @@ class StepSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         val rawSteps = readStepCounter(applicationContext) ?: return Result.retry()
         val today = StepMath.todayLocalDate()
-        val stepsToday = StepMath.todaysSteps(applicationContext, rawSteps)
+        val stepsToday = DailyStepTracker.recordReading(applicationContext, rawSteps)
 
         val outcome = StepsApi.postSteps(syncUrl, today, stepsToday)
         return if (outcome.isSuccess) Result.success() else Result.retry()

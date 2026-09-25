@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -31,7 +30,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var binding: ActivityMainBinding
     private var sensorManager: SensorManager? = null
     private var stepCounterSensor: Sensor? = null
-    private var latestRawSteps: Int? = null
+    private var latestStepsToday: Int? = null
 
     private val qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
         val scannedUrl = result.contents
@@ -101,8 +100,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         val rawSteps = event.values[0].toInt()
-        latestRawSteps = rawSteps
-        val stepsToday = StepMath.todaysSteps(this, rawSteps)
+        val stepsToday = DailyStepTracker.recordReading(this, rawSteps)
+        latestStepsToday = stepsToday
         binding.stepsValue.text = stepsToday.toString()
         binding.syncButton.isEnabled = SyncPrefs.isConfigured(this)
     }
@@ -120,13 +119,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private fun syncNow() {
         val syncUrl = SyncPrefs.getSyncUrl(this) ?: return
-        val rawSteps = latestRawSteps
-        if (rawSteps == null) {
+        val stepsToday = latestStepsToday
+        if (stepsToday == null) {
             binding.syncResult.text = "Still reading your step counter - try again in a moment."
             return
         }
         val today = StepMath.todayLocalDate()
-        val stepsToday = StepMath.todaysSteps(this, rawSteps)
 
         binding.syncButton.isEnabled = false
         binding.syncResult.text = "Syncing…"
@@ -148,7 +146,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         } else {
             getString(R.string.not_set_up)
         }
-        binding.syncButton.isEnabled = configured && latestRawSteps != null
+        binding.syncButton.isEnabled = configured && latestStepsToday != null
     }
 
     private fun schedulePeriodicSync() {
