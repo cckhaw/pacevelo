@@ -146,7 +146,9 @@ interface GoogleHealthCivilDate {
 
 interface GoogleHealthDailyRollupDataPoint {
   civilStartTime?: { date: GoogleHealthCivilDate };
-  steps?: { stepsSum?: string };
+  // Confirmed against a live sync response (via the "Sync now" button's
+  // sample-point diagnostic): the field is countSum.
+  steps?: { countSum?: string };
 }
 
 interface GoogleHealthDailyRollUpResponse {
@@ -210,7 +212,7 @@ export async function getDailySteps(
 
   for (const point of rollupDataPoints) {
     if (!sampleRollupPoint) sampleRollupPoint = point;
-    const stepsSum = Number(point.steps?.stepsSum ?? 0);
+    const stepsSum = Number(point.steps?.countSum ?? 0);
     if (!stepsSum) continue;
 
     const civilDate = point.civilStartTime?.date;

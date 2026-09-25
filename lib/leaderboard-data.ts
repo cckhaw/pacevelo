@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, desc, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import {
   activities,
@@ -68,8 +68,20 @@ export async function getLeaderboardData(
   }
 
   const now = new Date();
-  let challengeList: (typeof challenges.$inferSelect)[] = [];
-  let activeChallenge: (typeof challenges.$inferSelect) | null = null;
+  // The dropdown's full option list - every currently-active challenge,
+  // fetched unconditionally so picking one from it (which re-requests with
+  // an explicit challengeId, below) doesn't make the dropdown itself
+  // collapse to just the one selected challenge on the next fetch.
+  let challengeList = await db.query.challenges.findMany({
+    where: and(
+      eq(challenges.companyId, company.id),
+      eq(challenges.isActive, true),
+      lte(challenges.startDate, now),
+      gte(challenges.endDate, now),
+    ),
+    orderBy: desc(challenges.startDate),
+  });
+  let activeChallenge: (typeof challenges.$inferSelect) | null = challengeList[0] ?? null;
 
   if (options.challengeId) {
     // An explicit request for one challenge (e.g. an archived one's "final
@@ -79,21 +91,13 @@ export async function getLeaderboardData(
     });
     if (requested) {
       activeChallenge = requested;
-      challengeList = [requested];
+      // Keep it selectable even if it's outside the currently-active list
+      // (e.g. already ended) - the dropdown still shows every other active
+      // challenge alongside it, rather than shrinking to just this one.
+      if (!challengeList.some((c) => c.id === requested.id)) {
+        challengeList = [requested, ...challengeList];
+      }
     }
-  }
-
-  if (!activeChallenge) {
-    challengeList = await db.query.challenges.findMany({
-      where: and(
-        eq(challenges.companyId, company.id),
-        eq(challenges.isActive, true),
-        lte(challenges.startDate, now),
-        gte(challenges.endDate, now),
-      ),
-      orderBy: desc(challenges.startDate),
-    });
-    activeChallenge = challengeList[0] ?? null;
   }
 
   if (!activeChallenge) {
@@ -175,6 +179,128 @@ export async function getLeaderboardData(
     activeChallenge: serializeChallenge(activeChallenge),
     individual: buildIndividualStandings(roster, rows, activeChallenge.metricType),
     departmental: buildDepartmentStandings(roster, rows, activeChallenge.metricType),
+  };
+}
+
+export interface ParticipantDayBreakdown {
+  date: string; // "YYYY-MM-DD", UTC calendar day
+  value: number;
+  activityCount: number;
+}
+
+export interface ParticipantBreakdown {
+  profileId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  department: string | null;
+  metricType: MetricType;
+  totalValue: number;
+  days: ParticipantDayBreakdown[];
+}
+
+/**
+ * A single participant's day-by-day progress within one challenge, so
+ * teammates can see how someone else's total built up rather than just the
+ * final number - powers clicking a name on the leaderboard. Scoped to a
+ * specific challenge (not "all activity ever") and restricted to profiles
+ * actually enrolled in it, mirroring getLeaderboardData's roster.
+ */
+export async function getParticipantBreakdown(
+  slug: string,
+  challengeId: string,
+  profileId: string,
+): Promise<ParticipantBreakdown | null> {
+  const company = await db.query.companies.findFirst({
+    where: eq(companies.slug, slug),
+    columns: { id: true },
+  });
+  if (!company) return null;
+
+  const challenge = await db.query.challenges.findFirst({
+    where: and(eq(challenges.id, challengeId), eq(challenges.companyId, company.id)),
+  });
+  if (!challenge) return null;
+
+  const [participant] = await db
+    .select({
+      profileId: challengeParticipants.profileId,
+      fullName: profiles.fullName,
+      avatarUrl: profiles.avatarUrl,
+      department: profiles.department,
+    })
+    .from(challengeParticipants)
+    .innerJoin(profiles, eq(challengeParticipants.profileId, profiles.id))
+    .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.profileId, profileId)));
+  if (!participant) return null;
+
+  if (challenge.dataSource === "google_health") {
+    const stepRows = await db
+      .select({ day: stepEntries.day, steps: stepEntries.steps })
+      .from(stepEntries)
+      .where(
+        and(
+          eq(stepEntries.profileId, profileId),
+          gte(stepEntries.day, challenge.startDate),
+          lte(stepEntries.day, challenge.endDate),
+        ),
+      )
+      .orderBy(asc(stepEntries.day));
+
+    // Grouped defensively by calendar day rather than mapped 1:1 from rows:
+    // the sync path (lib/google-health/sync.ts) always upserts one
+    // midnight-UTC-anchored row per profile per day, so this doesn't
+    // normally collapse anything, but it keeps a stray/legacy non-anchored
+    // row from producing two entries for what's really the same day (which
+    // would both inflate the total and give the day list a duplicate key).
+    const byDay = new Map<string, { value: number; activityCount: number }>();
+    for (const row of stepRows) {
+      const date = row.day.toISOString().slice(0, 10);
+      const entry = byDay.get(date) ?? { value: 0, activityCount: 0 };
+      entry.value += row.steps;
+      entry.activityCount += 1;
+      byDay.set(date, entry);
+    }
+    const days = [...byDay.entries()]
+      .map(([date, d]) => ({ date, value: d.value, activityCount: d.activityCount }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      ...participant,
+      metricType: challenge.metricType,
+      totalValue: days.reduce((sum, d) => sum + d.value, 0),
+      days,
+    };
+  }
+
+  const activityRows = await db
+    .select({
+      distanceMeters: activities.distanceMeters,
+      movingTimeSeconds: activities.movingTimeSeconds,
+      elevationGainMeters: activities.elevationGainMeters,
+      startDate: activities.startDate,
+    })
+    .from(activityChallengeCredits)
+    .innerJoin(activities, eq(activityChallengeCredits.activityId, activities.id))
+    .where(and(eq(activityChallengeCredits.challengeId, challengeId), eq(activities.profileId, profileId)));
+
+  const byDay = new Map<string, { value: number; activityCount: number }>();
+  for (const row of activityRows) {
+    const date = row.startDate.toISOString().slice(0, 10);
+    const entry = byDay.get(date) ?? { value: 0, activityCount: 0 };
+    entry.value += metricValue(row, challenge.metricType);
+    entry.activityCount += 1;
+    byDay.set(date, entry);
+  }
+
+  const days = [...byDay.entries()]
+    .map(([date, d]) => ({ date, value: d.value, activityCount: d.activityCount }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    ...participant,
+    metricType: challenge.metricType,
+    totalValue: days.reduce((sum, d) => sum + d.value, 0),
+    days,
   };
 }
 
