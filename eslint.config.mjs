@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Standalone marketing assets (explainer video tooling), not app code.
     "marketing/**",
+    "public/explainer/**",
   ]),
 ]);
 

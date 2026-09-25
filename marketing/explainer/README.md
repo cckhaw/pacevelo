@@ -1,6 +1,13 @@
 # PaceVelo explainer video (90 s)
 
-A 2D flat-vector animated explainer: `pacevelo-explainer.mp4` (1920×1080, 30 fps, with music + SFX).
+A 2D flat-vector animated explainer (1920×1080, 30 fps, with music + SFX), shown on the homepage.
+
+The published files live in `public/explainer/` and are served by the site:
+
+- `/explainer` (redirects to `/explainer/index.html`): the interactive player
+- `/explainer/pacevelo-explainer.mp4`: the rendered video, with `/explainer/poster.jpg` as its poster frame
+
+This folder only holds the tooling that produces them.
 
 | Time | Scene |
 | --- | --- |
@@ -14,11 +21,11 @@ A 2D flat-vector animated explainer: `pacevelo-explainer.mp4` (1920×1080, 30 fp
 
 ## Files
 
-- `explainer.js`: the whole animation. `PV.frame(t)` returns the SVG for second `t` (pure function of time).
-- `index.html`: an interactive player (play/pause, scrub). Open it in a browser to preview edits live.
+- `public/explainer/explainer.js`: the whole animation. `PV.frame(t)` returns the SVG for second `t` (pure function of time).
+- `public/explainer/index.html`: the interactive player (play/pause, scrub). Open it in a browser to preview edits live.
+- `public/explainer/nunito.woff2`: Nunito font (SIL OFL).
 - `music.py`: synthesizes the music bed and sound effects, timed to the scenes.
-- `render.cjs`: captures every frame in headless Chromium and encodes it with ffmpeg.
-- `nunito.woff2`: Nunito font (SIL OFL).
+- `render.cjs`: captures every frame of the player in headless Chromium and encodes it with ffmpeg into `public/explainer/pacevelo-explainer.mp4`.
 
 ## Re-render
 
@@ -31,4 +38,5 @@ CHROMIUM=/path/to/chrome FFMPEG=/path/to/ffmpeg \
 # stills only:  node marketing/explainer/render.cjs --stills 5,25,60
 ```
 
-Captions and their timing live in `CAPTIONS` in `explainer.js`. Scene boundaries live in `SCENES`.
+Captions and their timing live in `CAPTIONS` in `public/explainer/explainer.js`. Scene boundaries live in `SCENES`.
+After re-rendering, refresh the poster: `node marketing/explainer/render.cjs --stills 34.6` then `ffmpeg -i still-34_6.png -vf scale=1280:-1 -q:v 4 public/explainer/poster.jpg`.
