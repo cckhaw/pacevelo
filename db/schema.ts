@@ -72,6 +72,11 @@ export const profiles = pgTable("profiles", {
   googleHealthAccessToken: text("google_health_access_token"),
   googleHealthRefreshToken: text("google_health_refresh_token"),
   googleHealthTokenExpiresAt: timestamp("google_health_token_expires_at", { withTimezone: true }),
+  // Bearer credential for POST /api/devices/steps - lets the iOS Shortcut or
+  // the sideloaded Android companion app report daily step counts without an
+  // interactive OAuth flow. Generated on demand from the dashboard (see
+  // lib/device-sync.ts), null until then.
+  deviceSyncToken: text("device_sync_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [uniqueIndex("profiles_email_idx").on(table.email)]);
 

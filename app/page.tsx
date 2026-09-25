@@ -3,7 +3,7 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
-  Footprints,
+  MapPin,
   MessageSquare,
   ShieldCheck,
   Trophy,
@@ -23,10 +23,10 @@ const FEATURES = [
       "Run, ride, or walk - every synced Strava activity automatically counts toward the challenges an employee has joined.",
   },
   {
-    icon: Footprints,
-    title: "Rank by steps",
+    icon: MapPin,
+    title: "GPS-verified, not self-reported",
     description:
-      "Prefer a simpler wellness challenge? Pick Google Health as the data source and rank by daily step totals instead.",
+      "Every entry is backed by a real GPS-tracked route, distance, and time - not a step count anyone can fake by shaking their phone in a drawer.",
   },
   {
     icon: Trophy,
@@ -61,11 +61,11 @@ const STEPS = [
   },
   {
     title: "Launch a challenge",
-    description: "Pick a metric - distance, active time, elevation, or steps - a date range, and which departments it's open to.",
+    description: "Pick a metric - distance, active time, or elevation - a date range, and which departments it's open to.",
   },
   {
     title: "Share the invite link",
-    description: "Employees verify their work email, set a password, and connect Strava or Google Health. Their activity starts counting right away.",
+    description: "Employees verify their work email, set a password, and connect Strava. Their activity starts counting right away.",
   },
 ] as const;
 
@@ -73,17 +73,22 @@ const FAQS = [
   {
     question: "Do employees need to install a PaceVelo app?",
     answer:
-      "No - employees just need a Strava or Google Health account they already use. The PaceVelo dashboard is where they connect it and check their progress.",
+      "No - employees just need a Strava account they already use. The PaceVelo dashboard is where they connect it and check their progress.",
   },
   {
     question: "What if someone doesn't want to share their fitness data?",
     answer:
-      "Connecting is entirely opt-in. Employees can disconnect Strava or Google Health at any time from their dashboard, which immediately stops any further syncing.",
+      "Connecting is entirely opt-in. Employees can disconnect Strava at any time from their dashboard, which immediately stops any further syncing.",
+  },
+  {
+    question: "Why Strava instead of just counting steps?",
+    answer:
+      "A step count is trivially easy to fake - shake a phone in a drawer and watch the leaderboard lie to you. A Strava activity carries a real GPS-tracked route, distance, and time, so a challenge actually reflects who moved, not who gamed a sensor. It's slightly more setup for participants; we think that trade is worth it for a leaderboard people can trust.",
   },
   {
     question: "Which activities count toward a challenge?",
     answer:
-      "Each challenge picks one data source at creation: Strava, ranked by distance, active time, or elevation across Run/Ride/Walk activities, or Google Health, ranked by daily steps.",
+      "Every challenge is ranked by distance, active time, or elevation across whichever of Run/Ride/Walk it allows - all sourced from synced Strava activities.",
   },
   {
     question: "Can we restrict who's allowed to join?",
@@ -135,8 +140,12 @@ export default function Home() {
                 Corporate athletic challenges, live in under 5 minutes
               </h1>
               <p className="mt-4 max-w-md text-lg text-muted-foreground">
-                Branded running, walking, and cycling challenges powered by Strava or Google Health - with real-time
-                leaderboards and Slack updates for your whole company.
+                Branded running, walking, and cycling challenges powered by GPS-verified Strava activities - with
+                real-time leaderboards and Slack updates for your whole company.
+              </p>
+              <p className="mt-3 flex max-w-md items-start gap-2 text-sm text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                Every entry is backed by a real GPS-tracked activity - not a step count anyone can fake.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg">
@@ -159,17 +168,17 @@ export default function Home() {
                   <div className="flex items-center gap-2">
                     <LogoMark size={28} className="rounded-lg" />
                     <div>
-                      <p className="text-sm font-semibold">Autumn Step Challenge</p>
-                      <p className="text-xs text-muted-foreground">Google Health · Ranked by total steps</p>
+                      <p className="text-sm font-semibold">Autumn Run Challenge</p>
+                      <p className="text-xs text-muted-foreground">Strava · Ranked by total distance</p>
                     </div>
                   </div>
                   <Badge>Live</Badge>
                 </div>
                 <ul className="mt-6 space-y-4">
                   {[
-                    { name: "A. Rahman", dept: "Engineering", value: 182_400, pct: 100 },
-                    { name: "S. Tan", dept: "Sales", value: 156_900, pct: 86 },
-                    { name: "J. Lee", dept: "Marketing", value: 121_050, pct: 66 },
+                    { name: "A. Rahman", dept: "Engineering", value: 84.4, pct: 100 },
+                    { name: "S. Tan", dept: "Sales", value: 72.9, pct: 86 },
+                    { name: "J. Lee", dept: "Marketing", value: 55.8, pct: 66 },
                   ].map((row, i) => (
                     <li key={row.name}>
                       <div className="mb-1 flex items-baseline justify-between text-sm">
@@ -177,7 +186,7 @@ export default function Home() {
                           {i + 1}. {row.name}{" "}
                           <span className="font-normal text-muted-foreground">· {row.dept}</span>
                         </span>
-                        <span className="tabular-nums text-muted-foreground">{row.value.toLocaleString()} steps</span>
+                        <span className="tabular-nums text-muted-foreground">{row.value.toLocaleString()} km</span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                         <div className="h-full rounded-full bg-primary" style={{ width: `${row.pct}%` }} />
@@ -199,8 +208,8 @@ export default function Home() {
               <p className="mt-1 text-sm text-muted-foreground">From onboarding code to a live challenge</p>
             </div>
             <div>
-              <p className="text-3xl font-semibold text-primary">2 data sources</p>
-              <p className="mt-1 text-sm text-muted-foreground">Strava or Google Health - employees&apos; choice</p>
+              <p className="text-3xl font-semibold text-primary">GPS-verified</p>
+              <p className="mt-1 text-sm text-muted-foreground">Every entry backed by a real tracked activity</p>
             </div>
             <div>
               <p className="text-3xl font-semibold text-primary">Real-time</p>
@@ -217,7 +226,7 @@ export default function Home() {
               One dashboard for challenges, leaderboards, and engagement
             </h2>
             <p className="mt-4 text-muted-foreground">
-              No wearable to buy, no spreadsheet to maintain. PaceVelo runs on the fitness accounts your employees
+              No wearable to buy, no spreadsheet to maintain. PaceVelo runs on the Strava account your employees
               already have.
             </p>
           </div>
@@ -274,10 +283,11 @@ export default function Home() {
             </div>
             <ul className="space-y-4">
               {[
-                "No manually copying Strava or step-count data into a spreadsheet every morning.",
+                "No manually copying Strava data into a spreadsheet every morning.",
                 "No extra app for employees to install - they connect an account they already use.",
                 "No guessing who's winning - individual and department leaderboards update as activity syncs.",
                 "No juggling multiple challenges by hand - a participant's activity counts toward every challenge they've joined.",
+                "No leaderboard anyone can fake - every entry is a real GPS-tracked activity, not a self-reported number.",
               ].map((point) => (
                 <li key={point} className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
