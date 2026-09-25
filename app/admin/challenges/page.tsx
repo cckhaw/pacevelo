@@ -11,7 +11,7 @@ import { EndChallengeButton } from "@/components/admin/end-challenge-button";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
-import { METRIC_TYPE_LABELS } from "@/lib/validations";
+import { CHALLENGE_DATA_SOURCE_LABELS, isStepsDataSource, METRIC_TYPE_LABELS } from "@/lib/validations";
 import { signOutAdmin } from "@/app/admin/auth-actions";
 
 function formatDate(value: Date) {
@@ -87,8 +87,8 @@ export default async function ChallengesPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                    {challenge.dataSource === "google_health" ? (
-                      <Badge variant="outline">Google Health</Badge>
+                    {isStepsDataSource(challenge.dataSource) ? (
+                      <Badge variant="outline">{CHALLENGE_DATA_SOURCE_LABELS[challenge.dataSource]}</Badge>
                     ) : (
                       challenge.allowedActivities.map((activity) => (
                         <Badge key={activity} variant="outline">

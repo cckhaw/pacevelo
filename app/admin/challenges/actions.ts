@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { challenges, companies } from "@/db/schema";
 import type { ActivityType, ChallengeDataSource } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { challengeSchema } from "@/lib/validations";
+import { challengeSchema, isStepsDataSource } from "@/lib/validations";
 
 function formatDate(value: Date) {
   return value.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -74,13 +74,15 @@ async function findOverlappingChallenges(
   });
 
   return candidates.filter((c) => {
-    // A Strava challenge and a Google Health challenge never double-count
-    // the same workout - they're scored from entirely separate telemetry.
-    // Two overlapping Google Health challenges, on the other hand, always
+    // A Strava challenge and a step-based challenge never double-count the
+    // same workout - they're scored from entirely separate telemetry. Two
+    // overlapping step-based challenges, on the other hand, always
     // double-count a shared participant's steps (daily totals aren't split
-    // by activity type the way Strava's are), regardless of allowedActivities.
-    if (dataSource === "google_health" || c.dataSource === "google_health") {
-      return c.dataSource === dataSource;
+    // by activity type the way Strava's are, and both "device_sync" and
+    // "google_health" read the very same step_entries rows), regardless of
+    // allowedActivities or which of the two data sources each one uses.
+    if (isStepsDataSource(dataSource) || isStepsDataSource(c.dataSource)) {
+      return isStepsDataSource(dataSource) && isStepsDataSource(c.dataSource);
     }
     return c.allowedActivities.some((activity) => allowedActivities.includes(activity));
   });
@@ -146,10 +148,9 @@ export async function createChallenge(
     );
     if (overlapping.length > 0) {
       const names = overlapping.map((c) => `"${c.title}"`).join(", ");
-      const reason =
-        parsed.data.dataSource === "google_health"
-          ? "both rank by Google Health steps"
-          : `also allows ${overlapping[0].allowedActivities.join("/")}`;
+      const reason = isStepsDataSource(parsed.data.dataSource)
+        ? "both rank by step count"
+        : `also allows ${overlapping[0].allowedActivities.join("/")}`;
       return {
         warning: `This overlaps with ${names}, which ${reason} in the same window - a participant in both would have the same workout counted twice. Create it anyway?`,
       };
@@ -220,10 +221,9 @@ export async function updateChallenge(
     );
     if (overlapping.length > 0) {
       const names = overlapping.map((c) => `"${c.title}"`).join(", ");
-      const reason =
-        existing.dataSource === "google_health"
-          ? "both rank by Google Health steps"
-          : `also allows ${overlapping[0].allowedActivities.join("/")}`;
+      const reason = isStepsDataSource(existing.dataSource)
+        ? "both rank by step count"
+        : `also allows ${overlapping[0].allowedActivities.join("/")}`;
       return {
         warning: `This overlaps with ${names}, which ${reason} in the same window - a participant in both would have the same workout counted twice. Save anyway?`,
       };

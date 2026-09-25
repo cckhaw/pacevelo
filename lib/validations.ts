@@ -65,7 +65,7 @@ export const companySchema = z.object({
 
 export const METRIC_TYPES = ["total_distance_km", "active_time_mins", "elevation_m", "total_steps"] as const;
 export const ACTIVITY_TYPES = ["Run", "Ride", "Walk"] as const;
-export const CHALLENGE_DATA_SOURCES = ["strava", "google_health"] as const;
+export const CHALLENGE_DATA_SOURCES = ["strava", "device_sync", "google_health"] as const;
 
 export const METRIC_TYPE_LABELS: Record<(typeof METRIC_TYPES)[number], string> = {
   total_distance_km: "Total distance (km)",
@@ -73,6 +73,17 @@ export const METRIC_TYPE_LABELS: Record<(typeof METRIC_TYPES)[number], string> =
   elevation_m: "Elevation gain (m)",
   total_steps: "Total steps",
 };
+
+export const CHALLENGE_DATA_SOURCE_LABELS: Record<(typeof CHALLENGE_DATA_SOURCES)[number], string> = {
+  strava: "Strava",
+  device_sync: "Smartphone Sync",
+  google_health: "Google Health",
+};
+
+/** Strava challenges are scored from per-activity credits; both other data sources rank by daily step count from the same undifferentiated step_entries table (see db/schema.ts). */
+export function isStepsDataSource(dataSource: (typeof CHALLENGE_DATA_SOURCES)[number]): boolean {
+  return dataSource !== "strava";
+}
 
 /**
  * Which leaderboard metrics make sense for a given set of allowed activities:
@@ -123,7 +134,7 @@ export const challengeSchema = z
     } else if (data.metricType !== "total_steps") {
       ctx.addIssue({
         code: "custom",
-        message: "Google Health challenges are always ranked by total steps.",
+        message: "Steps-based challenges are always ranked by total steps.",
         path: ["metricType"],
       });
     }

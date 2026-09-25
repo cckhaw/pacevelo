@@ -165,6 +165,14 @@ export async function verifyChallengeOtpAndJoin(
 
   const destination = `/company/${challenge.company.slug}?welcome=1`;
 
+  if (challenge.dataSource === "device_sync") {
+    // No OAuth "connect" step - the device sync token is generated lazily
+    // the first time /dashboard/devices is visited, so send them straight
+    // there to scan the QR code / install the Shortcut rather than to a
+    // leaderboard that's necessarily still empty.
+    redirect("/dashboard/devices?welcome=1");
+  }
+
   if (challenge.dataSource === "google_health") {
     if (profile.googleHealthUserId) {
       redirect(destination);

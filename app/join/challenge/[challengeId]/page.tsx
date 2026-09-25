@@ -5,7 +5,14 @@ import { ChallengeJoinForm } from "@/components/join/challenge-join-form";
 import { LogoMark } from "@/components/logo";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
+import type { ChallengeDataSource } from "@/db/schema";
 import { isPast } from "@/lib/time";
+
+const CONNECT_PHRASE: Record<ChallengeDataSource, string> = {
+  strava: "connect Strava",
+  device_sync: "set up phone sync",
+  google_health: "connect Google Health",
+};
 
 export default async function JoinChallengePage({
   params,
@@ -43,8 +50,8 @@ export default async function JoinChallengePage({
           )}
           <CardTitle className="text-xl">{challenge.title}</CardTitle>
           <CardDescription>
-            {challenge.company.name} · Verify your work email, set a password, then connect{" "}
-            {challenge.dataSource === "google_health" ? "Google Health" : "Strava"} to join.
+            {challenge.company.name} · Verify your work email, set a password, then {CONNECT_PHRASE[challenge.dataSource]}{" "}
+            to join.
           </CardDescription>
         </CardHeader>
         <CardContent>

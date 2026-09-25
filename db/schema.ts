@@ -16,10 +16,16 @@ export const profileRoleValues = ["employee", "admin"] as const;
 export const metricTypeValues = ["total_distance_km", "active_time_mins", "elevation_m", "total_steps"] as const;
 export const activityTypeValues = ["Run", "Ride", "Walk"] as const;
 // Which telemetry source a challenge is scored from. Strava challenges rank
-// by distance/time/elevation from synced activities; Google Health
-// challenges rank by daily step counts. A challenge picks one at creation -
-// the two aren't comparable on the same leaderboard.
-export const challengeDataSourceValues = ["strava", "google_health"] as const;
+// by distance/time/elevation from synced activities; the other two both
+// rank by daily step count from the same step_entries table (see
+// lib/device-sync.ts and lib/google-health/sync.ts), just populated by a
+// different path - "device_sync" from the iOS Shortcut / Android app,
+// "google_health" from the soft-deprecated Google Health OAuth connection
+// (see lib/feature-flags.ts). A challenge picks one at creation - they
+// aren't comparable/combinable on the same leaderboard, and any two
+// step-based challenges running at once double-count a shared
+// participant's steps (see findOverlappingChallenges).
+export const challengeDataSourceValues = ["strava", "device_sync", "google_health"] as const;
 
 export type ProfileRole = (typeof profileRoleValues)[number];
 export type MetricType = (typeof metricTypeValues)[number];

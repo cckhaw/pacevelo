@@ -76,7 +76,7 @@ export function metricValue(
       return row.elevationGainMeters;
     case "total_steps":
       // Strava-sourced activity rows never carry step counts - a
-      // "total_steps" challenge always uses the Google Health pipeline
+      // "total_steps" challenge always uses the step-entries pipeline
       // (buildIndividualStepStandings / buildDepartmentStepStandings) instead.
       throw new Error("total_steps is not a valid metric for activity-based standings");
   }
@@ -165,10 +165,11 @@ export function buildDepartmentStandings(
 
 /**
  * Step-based counterparts of buildIndividualStandings / buildDepartmentStandings,
- * used for challenges whose dataSource is "google_health" - kept as a parallel
- * path rather than unified with the activity-row functions above since the
- * two pipelines' source rows (Strava activities vs. daily step_entries) don't
- * share a shape. "activityCount" here counts synced days, not activities.
+ * used for challenges whose dataSource is "device_sync" or "google_health" -
+ * kept as a parallel path rather than unified with the activity-row functions
+ * above since the two pipelines' source rows (Strava activities vs. daily
+ * step_entries) don't share a shape. "activityCount" here counts synced
+ * days, not activities.
  */
 export function buildIndividualStepStandings(roster: RosterMember[], rows: LeaderboardStepRow[]): IndividualStanding[] {
   const byProfile = new Map<string, IndividualStanding>();

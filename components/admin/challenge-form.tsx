@@ -7,7 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import type { ChallengeActionState } from "@/app/admin/challenges/actions";
-import { ACTIVITY_TYPES, METRIC_TYPES, METRIC_TYPE_LABELS, allowedMetricTypesFor } from "@/lib/validations";
+import {
+  ACTIVITY_TYPES,
+  CHALLENGE_DATA_SOURCE_LABELS,
+  METRIC_TYPES,
+  METRIC_TYPE_LABELS,
+  allowedMetricTypesFor,
+  isStepsDataSource,
+} from "@/lib/validations";
 import { GOOGLE_HEALTH_ENABLED } from "@/lib/feature-flags";
 import type { ActivityType, Challenge, ChallengeDataSource, MetricType } from "@/db/schema";
 
@@ -34,6 +41,25 @@ export function ChallengeForm({
   defaultEmailDomain?: string;
 }) {
   const [state, formAction] = useActionState(action, initialState);
+  // React's own post-action form reset (a React 19 <form action> behavior)
+  // still reaches into the DOM and blanks radio/checkbox `checked` state
+  // even though they're controlled here - text/date <Input>s are immune
+  // because their `value` prop gets re-applied on every render regardless,
+  // but React skips re-writing `checked` when the backing state value
+  // itself hasn't changed, so a stray native reset the browser did outside
+  // React's knowledge sticks. Bumping this key after every action
+  // completion forces the radio/checkbox groups below to remount fresh
+  // (state is a new object each time useActionState's action resolves, so
+  // this fires exactly when needed) rather than patch in place, which
+  // re-reads the real React state and wins. Adjusted during render (React's
+  // documented pattern for "respond to a prop/value change") rather than
+  // via an effect, which would apply the fix one render too late.
+  const [prevState, setPrevState] = useState(state);
+  const [formVersion, setFormVersion] = useState(0);
+  if (state !== prevState) {
+    setPrevState(state);
+    setFormVersion((v) => v + 1);
+  }
   // Controlled, rather than defaultValue - a form action (like the overlap
   // warning below) resets uncontrolled fields back to their original
   // defaultValue once it completes, same as a native form reset, which
@@ -52,8 +78,9 @@ export function ChallengeForm({
     challenge?.metricType ?? "total_distance_km",
   );
   const [prizes, setPrizes] = useState<string[]>(challenge?.prizes ?? []);
-  const availableMetrics: MetricType[] =
-    dataSource === "google_health" ? ["total_steps"] : allowedMetricTypesFor(selectedActivities);
+  const availableMetrics: MetricType[] = isStepsDataSource(dataSource)
+    ? ["total_steps"]
+    : allowedMetricTypesFor(selectedActivities);
   // Derived during render rather than synced via effect: whichever metric the
   // admin last picked, clamped to whatever the current activity selection
   // still allows, so an invalid combination can never be submitted.
@@ -110,11 +137,11 @@ export function ChallengeForm({
         {challenge ? (
           <>
             <input type="hidden" name="dataSource" value={dataSource} />
-            <p className="text-sm">{dataSource === "google_health" ? "Google Health (steps)" : "Strava"}</p>
+            <p className="text-sm">{CHALLENGE_DATA_SOURCE_LABELS[dataSource]}</p>
             <p className="text-xs text-muted-foreground">The data source can&apos;t be changed after a challenge is created.</p>
           </>
-        ) : GOOGLE_HEALTH_ENABLED ? (
-          <div className="flex gap-4">
+        ) : (
+          <div key={`datasource-${formVersion}`} className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
@@ -130,31 +157,41 @@ export function ChallengeForm({
               <input
                 type="radio"
                 name="dataSource"
-                value="google_health"
-                checked={dataSource === "google_health"}
-                onChange={() => setDataSource("google_health")}
+                value="device_sync"
+                checked={dataSource === "device_sync"}
+                onChange={() => setDataSource("device_sync")}
                 className="h-4 w-4 border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
-              Google Health
+              Smartphone Sync (steps)
             </label>
+            {GOOGLE_HEALTH_ENABLED ? (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="dataSource"
+                  value="google_health"
+                  checked={dataSource === "google_health"}
+                  onChange={() => setDataSource("google_health")}
+                  className="h-4 w-4 border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                Google Health
+              </label>
+            ) : null}
           </div>
-        ) : (
-          <>
-            <input type="hidden" name="dataSource" value="strava" />
-            <p className="text-sm">Strava</p>
-          </>
         )}
         <p className="text-xs text-muted-foreground">
-          {dataSource === "google_health"
-            ? "Participants connect Google Health and are ranked by daily step count."
-            : "Participants connect Strava, so every entry is backed by GPS-verified distance and time - not a step count anyone could fake."}
+          {dataSource === "strava"
+            ? "Participants connect Strava, so every entry is backed by GPS-verified distance and time - not a step count anyone could fake."
+            : dataSource === "device_sync"
+              ? "Participants report daily steps from an iPhone Shortcut or the Android app, no separate account to connect."
+              : "Participants connect Google Health and are ranked by daily step count."}
         </p>
       </fieldset>
 
       {dataSource === "strava" ? (
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">Allowed activities</legend>
-          <div className="flex gap-4">
+          <div key={`activities-${formVersion}`} className="flex gap-4">
             {ACTIVITY_TYPES.map((activity) => (
               <label key={activity} className="flex items-center gap-2 text-sm">
                 <input
@@ -174,7 +211,7 @@ export function ChallengeForm({
 
       <div className="space-y-2">
         <Label htmlFor="metricType">Leaderboard metric</Label>
-        {dataSource === "google_health" ? (
+        {isStepsDataSource(dataSource) ? (
           <>
             <input type="hidden" name="metricType" value="total_steps" />
             <p className="text-sm">Total steps</p>
@@ -196,8 +233,8 @@ export function ChallengeForm({
           </select>
         )}
         <p className="text-xs text-muted-foreground">
-          {dataSource === "google_health"
-            ? "Google Health challenges are always ranked by total steps."
+          {isStepsDataSource(dataSource)
+            ? "Steps-based challenges are always ranked by total steps."
             : availableMetrics.length === 1
               ? "Ride combined with Run and/or Walk can only be ranked by active time."
               : "Available metrics depend on which activities are allowed."}

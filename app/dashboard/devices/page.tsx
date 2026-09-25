@@ -36,7 +36,8 @@ function formatSyncDay(day: Date) {
  * companion app POSTs to the same URL shown here, authenticated by the
  * token baked into it - see app/api/devices/steps/route.ts.
  */
-export default async function DevicesPage() {
+export default async function DevicesPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
+  const { welcome } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -66,6 +67,12 @@ export default async function DevicesPage() {
         <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
         </Link>
+
+        {welcome ? (
+          <p className="mb-6 rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+            You&apos;re in! Set up phone sync below to start reporting steps.
+          </p>
+        ) : null}
 
         <Card className="mb-6">
           <CardHeader>
