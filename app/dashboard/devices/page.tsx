@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { ArrowLeft, Smartphone } from "lucide-react";
+import { ArrowLeft, Download, Link2, Smartphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyTextButton } from "@/components/copy-text-button";
 import { RegenerateDeviceTokenButton } from "@/components/regenerate-device-token-button";
@@ -11,6 +12,7 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getOrCreateDeviceSyncToken } from "@/lib/device-sync";
+import { IOS_SHORTCUT_NAME, iosShortcutInstallUrl, iosShortcutPersonalizeUrl } from "@/lib/ios-shortcut";
 import { signOut } from "@/app/login/actions";
 
 /**
@@ -33,6 +35,9 @@ export default async function DevicesPage() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const syncUrl = `${appUrl}/api/devices/steps?token=${token}`;
   const qrSvg = await QRCode.toString(syncUrl, { type: "svg", margin: 1, width: 220 });
+
+  const shortcutInstallUrl = iosShortcutInstallUrl();
+  const shortcutPersonalizeUrl = iosShortcutPersonalizeUrl(syncUrl);
 
   return (
     <div className="min-h-screen bg-secondary">
@@ -77,57 +82,52 @@ export default async function DevicesPage() {
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-base">iPhone: set up an Apple Shortcut</CardTitle>
-            <CardDescription>A few minutes, once. No app install required.</CardDescription>
+            <CardTitle className="text-base">iPhone: install the PaceVelo Shortcut</CardTitle>
+            <CardDescription>
+              {shortcutInstallUrl
+                ? "Two taps, then it reports automatically."
+                : "A few minutes, once. No app install required."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ol className="list-decimal space-y-3 pl-5 text-sm">
-              <li>
-                Open the <strong>Shortcuts</strong> app → <strong>+</strong> to create a new shortcut.
-              </li>
-              <li>
-                Add action <strong>Find Health Samples</strong> → set Sample Type to <strong>Steps</strong>, and set
-                the date filter to <strong>Today</strong>.
-              </li>
-              <li>
-                Add action <strong>Calculate Statistics</strong> → Statistic: <strong>Sum</strong>, input: the health
-                samples from the step above. This gives you today&apos;s total step count.
-              </li>
-              <li>
-                Add action <strong>Format Date</strong> → input: <strong>Current Date</strong>, Format:{" "}
-                <strong>Custom</strong>, custom format <code className="rounded bg-muted px-1 py-0.5">yyyy-MM-dd</code>.
-                This is your phone&apos;s own local date, which matters near midnight.
-              </li>
-              <li>
-                Add action <strong>Get Contents of URL</strong>:
-                <ul className="mt-1.5 list-disc space-y-1 pl-5">
+            {shortcutInstallUrl ? (
+              <div className="space-y-4">
+                <ol className="list-decimal space-y-3 pl-5 text-sm">
                   <li>
-                    URL: <code className="break-all rounded bg-muted px-1 py-0.5 text-xs">{syncUrl}</code>
+                    <Button asChild size="sm">
+                      <a href={shortcutInstallUrl}>
+                        <Download className="h-3.5 w-3.5" /> Install the Shortcut
+                      </a>
+                    </Button>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Opens the Shortcuts app - tap <strong>Add Shortcut</strong> there. Only needed the first time
+                      you set up any phone.
+                    </p>
                   </li>
                   <li>
-                    Method: <strong>POST</strong>
+                    <Button asChild size="sm" variant="outline">
+                      <a href={shortcutPersonalizeUrl}>
+                        <Link2 className="h-3.5 w-3.5" /> Connect it to your account
+                      </a>
+                    </Button>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Links the shortcut to you and syncs today&apos;s steps right away. Do this on every phone
+                      you&apos;ve installed the shortcut on, and again any time you get a new setup link.
+                    </p>
                   </li>
-                  <li>
-                    Request Body: <strong>JSON</strong>, with two fields: <code className="rounded bg-muted px-1 py-0.5">steps</code>{" "}
-                    set to the Sum from step 3, and <code className="rounded bg-muted px-1 py-0.5">date</code> set to
-                    the formatted date from step 4.
-                  </li>
-                </ul>
-              </li>
-              <li>Name the shortcut something like &quot;Report Steps to PaceVelo&quot; and save it.</li>
-              <li>
-                Tap it once to test it - a successful run returns <code className="rounded bg-muted px-1 py-0.5">{'{"ok":true,...}'}</code>.
-              </li>
-              <li>
-                To run it automatically: <strong>Automation</strong> tab → <strong>+</strong> →{" "}
-                <strong>Create Personal Automation</strong> → <strong>Time of Day</strong> (e.g. 11:55 PM, repeat
-                daily) → <strong>Run Shortcut</strong> → pick the one you just made.
-              </li>
-              <li>
-                In that automation&apos;s settings, turn off <strong>Ask Before Running</strong> so it reports
-                silently in the background.
-              </li>
-            </ol>
+                </ol>
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-muted-foreground">
+                    Prefer to build it yourself, or the buttons above didn&apos;t work?
+                  </summary>
+                  <div className="mt-3">
+                    <ShortcutManualSteps syncUrl={syncUrl} personalizeUrl={shortcutPersonalizeUrl} />
+                  </div>
+                </details>
+              </div>
+            ) : (
+              <ShortcutManualSteps syncUrl={syncUrl} personalizeUrl={shortcutPersonalizeUrl} />
+            )}
           </CardContent>
         </Card>
 
@@ -145,5 +145,110 @@ export default async function DevicesPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+/**
+ * Builds the *reusable* shortcut: it reads its setup URL from whatever it's
+ * given as input and saves that to a file, rather than having one person's
+ * URL hardcoded in - so the same shortcut works for every employee. Shown
+ * either as the fallback when no iCloud install link is configured yet, or
+ * tucked under "build it yourself" once one is - see lib/ios-shortcut.ts.
+ * Whoever builds this (following these exact steps) and shares it via the
+ * Shortcuts app's Share Sheet -> Copy iCloud Link produces the link that
+ * goes into NEXT_PUBLIC_IOS_SHORTCUT_ICLOUD_URL, unlocking the two-tap flow
+ * above for everyone else.
+ */
+function ShortcutManualSteps({ syncUrl, personalizeUrl }: { syncUrl: string; personalizeUrl: string }) {
+  return (
+    <ol className="list-decimal space-y-3 pl-5 text-sm">
+      <li>
+        Open the <strong>Shortcuts</strong> app → <strong>+</strong> to create a new shortcut.
+      </li>
+      <li>
+        Add action <strong>If</strong> → input: <strong>Shortcut Input</strong>, condition{" "}
+        <strong>has any value</strong>.
+        <ul className="mt-1.5 list-disc space-y-1 pl-5">
+          <li>
+            Inside the <strong>If</strong>, add action <strong>Save File</strong> → input:{" "}
+            <strong>Shortcut Input</strong>, Service: <strong>iCloud Drive</strong>, path{" "}
+            <code className="rounded bg-muted px-1 py-0.5">Shortcuts/pacevelo-setup.txt</code>, Overwrite:{" "}
+            <strong>Yes</strong>.
+          </li>
+        </ul>
+        This is what lets a link running the shortcut with your setup URL as input (like the one in step 10 below)
+        personalize it without you editing it.
+      </li>
+      <li>
+        Add action <strong>Get File</strong> → File: <code className="rounded bg-muted px-1 py-0.5">Shortcuts/pacevelo-setup.txt</code>
+        , Service: <strong>iCloud Drive</strong>. Then add <strong>Get Text from Input</strong> on that file - this
+        is your saved setup URL.
+      </li>
+      <li>
+        Add action <strong>If</strong> → input: the text from the step above, condition{" "}
+        <strong>has no value</strong>.
+        <ul className="mt-1.5 list-disc space-y-1 pl-5">
+          <li>
+            Inside it, add <strong>Show Alert</strong> (&quot;Not set up - open your PaceVelo dashboard and tap the
+            setup link again.&quot;), then <strong>Stop This Shortcut</strong>.
+          </li>
+        </ul>
+      </li>
+      <li>
+        Add action <strong>Find Health Samples</strong> → set Sample Type to <strong>Steps</strong>, and set the
+        date filter to <strong>Today</strong>.
+      </li>
+      <li>
+        Add action <strong>Calculate Statistics</strong> → Statistic: <strong>Sum</strong>, input: the health
+        samples from the step above. This gives you today&apos;s total step count.
+      </li>
+      <li>
+        Add action <strong>Format Date</strong> → input: <strong>Current Date</strong>, Format:{" "}
+        <strong>Custom</strong>, custom format <code className="rounded bg-muted px-1 py-0.5">yyyy-MM-dd</code>. This
+        is your phone&apos;s own local date, which matters near midnight.
+      </li>
+      <li>
+        Add action <strong>Get Contents of URL</strong>:
+        <ul className="mt-1.5 list-disc space-y-1 pl-5">
+          <li>
+            URL: the saved setup URL from step 3 (not typed in directly - that&apos;s what makes this version
+            reusable).
+          </li>
+          <li>
+            Method: <strong>POST</strong>
+          </li>
+          <li>
+            Request Body: <strong>JSON</strong>, with two fields: <code className="rounded bg-muted px-1 py-0.5">steps</code>{" "}
+            set to the Sum from step 6, and <code className="rounded bg-muted px-1 py-0.5">date</code> set to the
+            formatted date from step 7.
+          </li>
+        </ul>
+      </li>
+      <li>
+        Name the shortcut exactly <strong>{IOS_SHORTCUT_NAME}</strong> and save it - the exact name matters, it&apos;s
+        what the personalize link in the next step (and, once this shortcut is shared back to PaceVelo as the
+        install link, the &quot;Connect it to your account&quot; button) look for.
+      </li>
+      <li>
+        Tap it once to test it. On this first run, <strong>Shortcut Input</strong> is empty (nothing&apos;s been
+        connected yet) so it should show the &quot;Not set up&quot; alert - that&apos;s expected. To actually test
+        end-to-end, open this link once (it runs the shortcut with your setup URL as input, exactly like the
+        &quot;Connect it to your account&quot; button does):
+        <div className="mt-1.5">
+          <code className="block break-all rounded-md border bg-muted px-2 py-1.5 text-xs">{personalizeUrl}</code>
+        </div>
+        A successful run POSTs to your setup URL and returns <code className="rounded bg-muted px-1 py-0.5">{'{"ok":true,...}'}</code>{" "}
+        (setup URL: <code className="break-all rounded bg-muted px-1 py-0.5 text-xs">{syncUrl}</code>).
+      </li>
+      <li>
+        To run it automatically: <strong>Automation</strong> tab → <strong>+</strong> →{" "}
+        <strong>Create Personal Automation</strong> → <strong>Time of Day</strong> (e.g. 11:55 PM, repeat daily) →{" "}
+        <strong>Run Shortcut</strong> → pick the one you just made.
+      </li>
+      <li>
+        In that automation&apos;s settings, turn off <strong>Ask Before Running</strong> so it reports silently in
+        the background.
+      </li>
+    </ol>
   );
 }
