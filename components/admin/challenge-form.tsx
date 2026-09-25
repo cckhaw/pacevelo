@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import type { ChallengeActionState } from "@/app/admin/challenges/actions";
 import { ACTIVITY_TYPES, METRIC_TYPES, METRIC_TYPE_LABELS, allowedMetricTypesFor } from "@/lib/validations";
+import { GOOGLE_HEALTH_ENABLED } from "@/lib/feature-flags";
 import type { ActivityType, Challenge, ChallengeDataSource, MetricType } from "@/db/schema";
 
 const initialState: ChallengeActionState = {};
@@ -112,7 +113,7 @@ export function ChallengeForm({
             <p className="text-sm">{dataSource === "google_health" ? "Google Health (steps)" : "Strava"}</p>
             <p className="text-xs text-muted-foreground">The data source can&apos;t be changed after a challenge is created.</p>
           </>
-        ) : (
+        ) : GOOGLE_HEALTH_ENABLED ? (
           <div className="flex gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -137,11 +138,16 @@ export function ChallengeForm({
               Google Health
             </label>
           </div>
+        ) : (
+          <>
+            <input type="hidden" name="dataSource" value="strava" />
+            <p className="text-sm">Strava</p>
+          </>
         )}
         <p className="text-xs text-muted-foreground">
           {dataSource === "google_health"
             ? "Participants connect Google Health and are ranked by daily step count."
-            : "Participants connect Strava and are ranked by synced Run/Ride/Walk activities."}
+            : "Participants connect Strava, so every entry is backed by GPS-verified distance and time - not a step count anyone could fake."}
         </p>
       </fieldset>
 

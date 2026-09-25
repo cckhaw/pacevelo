@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pacevelo_primary">#0F766E</color>
+    <color name="pacevelo_primary_dark">#0B5A54</color>
+    <color name="pacevelo_background">#F1F5F4</color>
+    <color name="pacevelo_on_primary">#FFFFFF</color>
+</resources>

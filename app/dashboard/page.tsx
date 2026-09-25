@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { CheckCircle2, Footprints, Trophy, Watch } from "lucide-react";
+import { CheckCircle2, Footprints, Smartphone, Trophy, Watch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { challengeParticipants, profiles } from "@/db/schema";
 import { getValidStravaAccessToken } from "@/lib/strava/tokens";
 import { getValidGoogleHealthAccessToken } from "@/lib/google-health/tokens";
+import { GOOGLE_HEALTH_ENABLED } from "@/lib/feature-flags";
 import { isPast } from "@/lib/time";
 import { signOut } from "@/app/login/actions";
 import { DisconnectStravaButton } from "@/components/disconnect-strava-button";
@@ -75,7 +76,7 @@ export default async function DashboardPage({
               ? "Your Strava account is connected."
               : googleHealthStatus === "connected"
                 ? "Your Google Health account is connected."
-                : "Connect Strava or Google Health below to start syncing."}
+                : "Connect Strava below to start syncing."}
           </p>
         ) : null}
 
@@ -120,28 +121,39 @@ export default async function DashboardPage({
               </Button>
             ) : null}
 
-            <div className="rounded-md border px-3 py-2">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-sm">
-                  <Footprints className="h-4 w-4" /> Google Health connection
-                </span>
-                {googleHealthStatus === "connected" ? (
-                  <Badge className="gap-1 bg-primary text-primary-foreground">
-                    <CheckCircle2 className="h-3 w-3" /> Connected
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">Not connected</Badge>
-                )}
-              </div>
-              {profile.googleHealthUserId ? (
-                <div className="mt-2 flex flex-wrap items-start justify-end gap-2">
-                  <SyncGoogleHealthButton />
-                  <DisconnectGoogleHealthButton />
-                </div>
-              ) : null}
-            </div>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/dashboard/devices">
+                <Smartphone className="h-4 w-4" /> Report steps from your phone
+              </Link>
+            </Button>
 
-            {googleHealthStatus !== "connected" ? (
+            {/* Soft-deprecated (see lib/feature-flags.ts) - still shown for
+                whoever already connected it, but no longer offered to
+                anyone who hasn't. */}
+            {GOOGLE_HEALTH_ENABLED || profile.googleHealthUserId ? (
+              <div className="rounded-md border px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sm">
+                    <Footprints className="h-4 w-4" /> Google Health connection
+                  </span>
+                  {googleHealthStatus === "connected" ? (
+                    <Badge className="gap-1 bg-primary text-primary-foreground">
+                      <CheckCircle2 className="h-3 w-3" /> Connected
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">Not connected</Badge>
+                  )}
+                </div>
+                {profile.googleHealthUserId ? (
+                  <div className="mt-2 flex flex-wrap items-start justify-end gap-2">
+                    <SyncGoogleHealthButton />
+                    <DisconnectGoogleHealthButton />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {GOOGLE_HEALTH_ENABLED && googleHealthStatus !== "connected" ? (
               <Button asChild variant="outline" className="w-full">
                 <a href={`/api/auth/google-health?redirect_to=${encodeURIComponent("/dashboard")}`}>
                   Connect Google Health
