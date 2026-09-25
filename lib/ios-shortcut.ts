@@ -21,8 +21,35 @@ export function iosShortcutInstallUrl(): string | null {
   return url && url.trim() ? url : null;
 }
 
-/** Deep link that runs the (already-installed) shortcut once with `setupUrl` as its input, which the shortcut saves for every future silent run. */
+/**
+ * iCloud link for the pre-built Personal Automation (Time of Day 11:55 PM ->
+ * Run Shortcut "Report Steps to PaceVelo" -> Ask Before Running off) - like
+ * the shortcut itself, an Automation can be shared via iCloud link (long-
+ * press it in the Automation tab -> Share -> Copy iCloud Link), and opening
+ * that link offers to add the whole automation as configured. This lets step
+ * 3 below skip the manual "Automation tab -> + -> Create Personal
+ * Automation -> ..." setup (still covered in ShortcutManualSteps as a
+ * fallback for anyone without this link). Optional - unset until someone
+ * builds and shares that automation, same as NEXT_PUBLIC_IOS_SHORTCUT_ICLOUD_URL.
+ */
+export function iosShortcutAutomationInstallUrl(): string | null {
+  const url = process.env.NEXT_PUBLIC_IOS_SHORTCUT_AUTOMATION_ICLOUD_URL;
+  return url && url.trim() ? url : null;
+}
+
+/**
+ * Deep link that runs the (already-installed) shortcut once with `setupUrl`
+ * as its input, which the shortcut saves for every future silent run.
+ *
+ * Built by hand rather than via URLSearchParams: that encodes spaces as `+`
+ * (the application/x-www-form-urlencoded convention), but the Shortcuts app
+ * doesn't decode `+` back to a space in its `name` param - it looks up the
+ * shortcut by that literal string and fails with "The file doesn't exist."
+ * Percent-encoding (%20) is what it actually expects.
+ */
 export function iosShortcutPersonalizeUrl(setupUrl: string): string {
-  const params = new URLSearchParams({ name: IOS_SHORTCUT_NAME, input: "text", text: setupUrl });
-  return `shortcuts://run-shortcut?${params.toString()}`;
+  const name = encodeURIComponent(IOS_SHORTCUT_NAME);
+  const input = encodeURIComponent("text");
+  const text = encodeURIComponent(setupUrl);
+  return `shortcuts://run-shortcut?name=${name}&input=${input}&text=${text}`;
 }
