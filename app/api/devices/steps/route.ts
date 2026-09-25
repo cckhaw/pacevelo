@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getProfileIdByDeviceSyncToken, recordDeviceStepEntry } from "@/lib/device-sync";
+import { recordDeviceStepEntry } from "@/lib/device-sync";
+import { authenticateDeviceRequest } from "@/lib/device-auth";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 // Generous bounds for backfill/clock-skew, not a real usage limit - catches
@@ -9,12 +10,6 @@ const MAX_DAYS_IN_PAST = 90;
 const MAX_DAYS_IN_FUTURE = 1;
 const MAX_STEPS_PER_DAY = 200_000;
 
-function bearerToken(request: NextRequest): string | null {
-  const header = request.headers.get("authorization");
-  if (header?.startsWith("Bearer ")) return header.slice("Bearer ".length).trim();
-  return request.nextUrl.searchParams.get("token");
-}
-
 /**
  * Reports one day's step total from an iOS Shortcut or the Android
  * companion app - the non-OAuth alternative to the (soft-deprecated, see
@@ -23,14 +18,12 @@ function bearerToken(request: NextRequest): string | null {
  * neither caller can do an interactive login.
  */
 export async function POST(request: NextRequest) {
-  const token = bearerToken(request);
-  if (!token) {
-    return NextResponse.json({ error: "Missing token (Authorization: Bearer <token> or ?token=)" }, { status: 401 });
-  }
-
-  const profileId = await getProfileIdByDeviceSyncToken(token);
+  const profileId = await authenticateDeviceRequest(request);
   if (!profileId) {
-    return NextResponse.json({ error: "Invalid or revoked token" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Missing or invalid token (Authorization: Bearer <token> or ?token=)" },
+      { status: 401 },
+    );
   }
 
   let body: unknown;

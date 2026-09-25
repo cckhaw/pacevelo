@@ -8,6 +8,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         SyncPrefs.setSyncUrl(this, scannedUrl)
         schedulePeriodicSync()
         refreshSetupStatus()
+        refreshSyncStatus()
     }
 
     private val requestActivityRecognition = registerForActivityResult(
@@ -62,7 +64,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         binding.syncButton.setOnClickListener { syncNow() }
 
         refreshSetupStatus()
-        if (SyncPrefs.isConfigured(this)) schedulePeriodicSync()
+        if (SyncPrefs.isConfigured(this)) {
+            schedulePeriodicSync()
+            refreshSyncStatus()
+        }
     }
 
     override fun onResume() {
@@ -136,6 +141,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             } else {
                 "Sync failed: ${outcome.exceptionOrNull()?.message ?: "unknown error"}"
             }
+            if (outcome.isSuccess) refreshSyncStatus()
         }
     }
 
@@ -147,6 +153,42 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             getString(R.string.not_set_up)
         }
         binding.syncButton.isEnabled = configured && latestStepsToday != null
+    }
+
+    /**
+     * Fills in account/challenge/last-sync from GET /api/devices/status - so
+     * someone can confirm which account this phone is reporting as and what
+     * it's actually counting toward without leaving the app. Best-effort: a
+     * failure (offline, server error) just leaves whatever was shown before
+     * rather than replacing it with an error, since none of this blocks the
+     * app's actual job of syncing steps.
+     */
+    private fun refreshSyncStatus() {
+        val syncUrl = SyncPrefs.getSyncUrl(this) ?: return
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { StepsApi.getStatus(syncUrl) }
+            val status = result.getOrNull() ?: return@launch
+
+            binding.accountInfo.text = "Connected as ${status.fullName} (${status.email})"
+            binding.accountInfo.visibility = View.VISIBLE
+
+            binding.challengeInfo.text = if (status.challenges.isEmpty()) {
+                "Not currently in an active steps challenge."
+            } else {
+                status.challenges.joinToString("\n") { c ->
+                    "${c.title} · ${StepMath.formatChallengeDate(c.startDate)} – ${StepMath.formatChallengeDate(c.endDate)}"
+                }
+            }
+            binding.challengeInfo.visibility = View.VISIBLE
+
+            val lastSync = status.lastSync
+            binding.lastSyncInfo.text = if (lastSync == null) {
+                "No sync recorded yet."
+            } else {
+                "Last synced ${StepMath.formatSyncTimestamp(lastSync.updatedAt)} · ${lastSync.steps} steps for ${lastSync.day}"
+            }
+            binding.lastSyncInfo.visibility = View.VISIBLE
+        }
     }
 
     private fun schedulePeriodicSync() {

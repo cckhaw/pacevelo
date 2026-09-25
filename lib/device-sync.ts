@@ -1,9 +1,10 @@
 import "server-only";
 
 import { randomBytes } from "crypto";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { profiles, stepEntries } from "@/db/schema";
+import { challengeParticipants, challenges, profiles, stepEntries } from "@/db/schema";
+import { isStepsDataSource } from "@/lib/validations";
 
 function randomToken(): string {
   return `pv_${randomBytes(24).toString("hex")}`;
@@ -91,4 +92,64 @@ export async function getLatestStepSync(profileId: string): Promise<LatestStepSy
     .orderBy(desc(stepEntries.updatedAt))
     .limit(1);
   return row ?? null;
+}
+
+export interface DeviceSyncChallenge {
+  id: string;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+}
+
+export interface DeviceSyncStatus {
+  fullName: string;
+  email: string;
+  challenges: DeviceSyncChallenge[];
+  lastSync: LatestStepSync | null;
+}
+
+/**
+ * Everything the Android app (or any other device-sync client) shows once
+ * connected, so someone can confirm at a glance which account it's reporting
+ * as, which currently-running challenge that's actually for, and that a sync
+ * really landed recently - rather than trusting a background job on faith.
+ * `challenges` is filtered to currently-active step-based ones (the only
+ * kind a device-sync report can affect) since a profile's other
+ * enrollments (Strava challenges, an ended step challenge) aren't relevant
+ * to what this token is doing right now.
+ */
+export async function getDeviceSyncStatus(profileId: string): Promise<DeviceSyncStatus | null> {
+  const profile = await db.query.profiles.findFirst({
+    where: eq(profiles.id, profileId),
+    columns: { fullName: true, email: true },
+  });
+  if (!profile) return null;
+
+  const now = new Date();
+  const rows = await db
+    .select({
+      id: challenges.id,
+      title: challenges.title,
+      startDate: challenges.startDate,
+      endDate: challenges.endDate,
+      dataSource: challenges.dataSource,
+    })
+    .from(challengeParticipants)
+    .innerJoin(challenges, eq(challengeParticipants.challengeId, challenges.id))
+    .where(
+      and(
+        eq(challengeParticipants.profileId, profileId),
+        eq(challenges.isActive, true),
+        lte(challenges.startDate, now),
+        gte(challenges.endDate, now),
+      ),
+    );
+
+  const stepChallenges = rows
+    .filter((row) => isStepsDataSource(row.dataSource))
+    .map(({ id, title, startDate, endDate }) => ({ id, title, startDate, endDate }));
+
+  const lastSync = await getLatestStepSync(profileId);
+
+  return { fullName: profile.fullName, email: profile.email, challenges: stepChallenges, lastSync };
 }
