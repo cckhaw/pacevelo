@@ -21,6 +21,7 @@ import {
   type DepartmentStanding,
   type IndividualStanding,
 } from "@/lib/leaderboard";
+import { isStepsDataSource } from "@/lib/validations";
 
 export interface SerializedChallenge {
   id: string;
@@ -121,7 +122,7 @@ export async function getLeaderboardData(
     .innerJoin(profiles, eq(challengeParticipants.profileId, profiles.id))
     .where(eq(challengeParticipants.challengeId, activeChallenge.id));
 
-  if (activeChallenge.dataSource === "google_health") {
+  if (isStepsDataSource(activeChallenge.dataSource)) {
     // Daily step totals aren't tied to a per-challenge credit table like
     // activities are - a row is scoped to this challenge just by the
     // participant being enrolled and the day falling in its date window.
@@ -233,7 +234,7 @@ export async function getParticipantBreakdown(
     .where(and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.profileId, profileId)));
   if (!participant) return null;
 
-  if (challenge.dataSource === "google_health") {
+  if (isStepsDataSource(challenge.dataSource)) {
     const stepRows = await db
       .select({ day: stepEntries.day, steps: stepEntries.steps })
       .from(stepEntries)
@@ -247,11 +248,12 @@ export async function getParticipantBreakdown(
       .orderBy(asc(stepEntries.day));
 
     // Grouped defensively by calendar day rather than mapped 1:1 from rows:
-    // the sync path (lib/google-health/sync.ts) always upserts one
-    // midnight-UTC-anchored row per profile per day, so this doesn't
-    // normally collapse anything, but it keeps a stray/legacy non-anchored
-    // row from producing two entries for what's really the same day (which
-    // would both inflate the total and give the day list a duplicate key).
+    // every writer (lib/device-sync.ts, lib/google-health/sync.ts) always
+    // upserts one midnight-UTC-anchored row per profile per day, so this
+    // doesn't normally collapse anything, but it keeps a stray/legacy
+    // non-anchored row from producing two entries for what's really the
+    // same day (which would both inflate the total and give the day list a
+    // duplicate key).
     const byDay = new Map<string, { value: number; activityCount: number }>();
     for (const row of stepRows) {
       const date = row.day.toISOString().slice(0, 10);
@@ -325,8 +327,8 @@ export interface EmployeeProgress {
  * Every employee in a company, and their progress in each challenge
  * they've joined - powers the admin "all employees" view. Mirrors
  * getLeaderboardData's two scoring pipelines (Strava activity credits vs.
- * Google Health step entries), but per-challenge across the whole company
- * rather than for one active challenge.
+ * step entries, shared by both step-based data sources), but per-challenge
+ * across the whole company rather than for one active challenge.
  */
 export async function getCompanyEmployeeProgress(companyId: string): Promise<EmployeeProgress[]> {
   const [employees, companyChallenges] = await Promise.all([
@@ -376,7 +378,7 @@ export async function getCompanyEmployeeProgress(companyId: string): Promise<Emp
   }
 
   for (const challenge of companyChallenges) {
-    if (challenge.dataSource !== "google_health") continue;
+    if (!isStepsDataSource(challenge.dataSource)) continue;
     const stepRows = await db
       .select({ profileId: stepEntries.profileId, steps: stepEntries.steps })
       .from(challengeParticipants)
