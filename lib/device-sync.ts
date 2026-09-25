@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomBytes } from "crypto";
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles, stepEntries } from "@/db/schema";
 
@@ -66,4 +66,29 @@ export async function recordDeviceStepEntry(profileId: string, day: string, step
       target: [stepEntries.profileId, stepEntries.day],
       set: { steps: sql`excluded.steps`, updatedAt: sql`now()` },
     });
+}
+
+export interface LatestStepSync {
+  day: Date;
+  steps: number;
+  updatedAt: Date;
+}
+
+/**
+ * The most recently *updated* step_entries row for a profile - not the most
+ * recent day, since someone could backfill an older day after today's.
+ * Powers the "last synced" status on /dashboard/devices, which is how
+ * someone actually confirms their Shortcut (or the Android app, or a still-
+ * connected Google Health account, if they have one - step_entries doesn't
+ * track which source wrote a row) is really reaching the server, rather
+ * than trusting a silent background automation on faith.
+ */
+export async function getLatestStepSync(profileId: string): Promise<LatestStepSync | null> {
+  const [row] = await db
+    .select({ day: stepEntries.day, steps: stepEntries.steps, updatedAt: stepEntries.updatedAt })
+    .from(stepEntries)
+    .where(eq(stepEntries.profileId, profileId))
+    .orderBy(desc(stepEntries.updatedAt))
+    .limit(1);
+  return row ?? null;
 }

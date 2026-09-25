@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
-import { ArrowLeft, Download, Link2, Smartphone } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, Link2, Smartphone } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyTextButton } from "@/components/copy-text-button";
@@ -11,9 +12,17 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getOrCreateDeviceSyncToken } from "@/lib/device-sync";
+import { getLatestStepSync, getOrCreateDeviceSyncToken } from "@/lib/device-sync";
 import { IOS_SHORTCUT_NAME, iosShortcutInstallUrl, iosShortcutPersonalizeUrl } from "@/lib/ios-shortcut";
+import { formatRelativeTime } from "@/lib/time";
 import { signOut } from "@/app/login/actions";
+
+function formatSyncDay(day: Date) {
+  // The stored day is midnight-UTC-anchored (see lib/device-sync.ts), so
+  // read it back in UTC too, rather than the viewer's own timezone shifting
+  // it to the wrong calendar day.
+  return day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
 
 /**
  * Self-serve setup for reporting steps without Google Health (soft-deprecated,
@@ -32,6 +41,7 @@ export default async function DevicesPage() {
   if (!profile) redirect("/login");
 
   const token = await getOrCreateDeviceSyncToken(profile.id);
+  const latestSync = await getLatestStepSync(profile.id);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const syncUrl = `${appUrl}/api/devices/steps?token=${token}`;
   const qrSvg = await QRCode.toString(syncUrl, { type: "svg", margin: 1, width: 220 });
@@ -58,6 +68,19 @@ export default async function DevicesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Last steps received</span>
+              {latestSync ? (
+                <Badge className="gap-1 bg-primary text-primary-foreground">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {formatSyncDay(latestSync.day)} · {latestSync.steps.toLocaleString()} steps ·{" "}
+                  {formatRelativeTime(latestSync.updatedAt)}
+                </Badge>
+              ) : (
+                <Badge variant="outline">Nothing yet</Badge>
+              )}
+            </div>
+
             <div className="flex justify-center rounded-md border bg-card p-4">
               {/* Server-generated QR of the sync URL below - scan it with the
                   Android companion app once it's installed. */}
@@ -176,7 +199,7 @@ function ShortcutManualSteps({ syncUrl, personalizeUrl }: { syncUrl: string; per
             <strong>Yes</strong>.
           </li>
         </ul>
-        This is what lets a link running the shortcut with your setup URL as input (like the one in step 10 below)
+        This is what lets a link running the shortcut with your setup URL as input (like the one in step 11 below)
         personalize it without you editing it.
       </li>
       <li>
@@ -223,6 +246,13 @@ function ShortcutManualSteps({ syncUrl, personalizeUrl }: { syncUrl: string; per
             formatted date from step 7.
           </li>
         </ul>
+      </li>
+      <li>
+        Add action <strong>Show Notification</strong> → Title <strong>PaceVelo</strong>, Body: text combining
+        &quot;Synced &quot;, the Sum from step 6, and &quot; steps&quot;. Unlike Show Alert, a notification doesn&apos;t
+        need to be dismissed, so it won&apos;t interrupt a silent background run - it&apos;s what lets you glance at
+        your phone and confirm the automation actually ran, instead of trusting it on faith. The dashboard&apos;s
+        &quot;Last steps received&quot; status (above) is the other way to check, from any device.
       </li>
       <li>
         Name the shortcut exactly <strong>{IOS_SHORTCUT_NAME}</strong> and save it - the exact name matters, it&apos;s
