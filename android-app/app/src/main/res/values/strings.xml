@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PaceVelo Steps</string>
+    <string name="not_set_up">Not set up yet</string>
+    <string name="scan_qr_code">Scan setup QR code</string>
+    <string name="sync_now">Sync now</string>
+    <string name="steps_today_label">Steps today</string>
+    <string name="background_sync_hint">Syncs automatically in the background too, roughly every 15 minutes.</string>
+</resources>
