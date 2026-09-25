@@ -10,45 +10,82 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: "Nunito", system-ui, sans-serif; }
   body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
   #stage { width: min(100vw - 32px, (100vh - 90px) * 16 / 9); aspect-ratio: 16 / 9; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
-  #stage > svg { display: block; width: 100%; height: 100%; }
+  #stage { position: relative; }
+  #frame { width: 100%; height: 100%; }
+  #frame > svg { display: block; width: 100%; height: 100%; }
+  #start { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(11,18,32,.45); border: 0; cursor: pointer; }
+  #start span { display: inline-flex; align-items: center; gap: 12px; font: 900 clamp(16px, 2.4vw, 28px) "Nunito", sans-serif; background: linear-gradient(90deg, #38EF7D, #00F2FE); color: #0B1220; border-radius: 999px; padding: .7em 1.4em; box-shadow: 0 12px 40px rgba(0,242,254,.35); }
+  #start[hidden] { display: none; }
   #controls { display: flex; align-items: center; gap: 12px; width: min(100vw - 32px, (100vh - 90px) * 16 / 9); }
   #controls button { font: 800 15px "Nunito", sans-serif; background: var(--accent); color: #0B1220; border: 0; border-radius: 999px; padding: 8px 18px; cursor: pointer; }
   #scrub { flex: 1; accent-color: var(--accent); }
   #clock { font: 700 14px ui-monospace, monospace; min-width: 90px; text-align: right; }
   body.render { display: block; background: #fff; }
   body.render #stage { width: 1920px; height: 1080px; border-radius: 0; box-shadow: none; }
-  body.render #controls { display: none; }
+  body.render #controls, body.render #start { display: none; }
 </style>
 </head>
 <body>
-<div id="stage"></div>
+<div id="stage"><button id="start" type="button" aria-label="Play with sound"><span>&#9654; Play with sound</span></button></div>
 <div id="controls">
-  <button id="play">Pause</button>
+  <button id="play" type="button">Play</button>
   <input id="scrub" type="range" min="0" max="90" step="0.01" value="0" aria-label="Seek">
   <span id="clock">0:00 / 1:30</span>
+  <button id="mute" type="button" aria-pressed="false">Sound on</button>
 </div>
+<audio id="sound" src="soundtrack.mp3" preload="auto"></audio>
 <script src="explainer.js"></script>
 <script>
   const stage = document.getElementById("stage");
-  const render = (t) => { stage.innerHTML = PV.frame(t); };
+  const frameHost = document.createElement("div");
+  frameHost.id = "frame";
+  stage.prepend(frameHost);
+  const render = (t) => { frameHost.innerHTML = PV.frame(t); };
   window.renderAt = render;
   if (new URLSearchParams(location.search).has("render")) {
     document.body.classList.add("render");
     render(0);
   } else {
-    const btn = document.getElementById("play"), scrub = document.getElementById("scrub"), clock = document.getElementById("clock");
+    const $ = (id) => document.getElementById(id);
+    const btn = $("play"), scrub = $("scrub"), clock = $("clock"), mute = $("mute"), start = $("start"), sound = $("sound");
     const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-    let t = 0, playing = true, last = performance.now();
+    // The soundtrack (music + voice-over) is the master clock while it plays;
+    // the wall clock takes over if audio is unavailable or blocked.
+    const PREVIEW_T = 3; // representative frame shown behind the start button
+    let t = 0, playing = false, started = false, last = performance.now();
+    const setPlaying = (on) => {
+      playing = on;
+      btn.textContent = on ? "Pause" : t >= PV.DURATION - 0.05 ? "Replay" : "Play";
+      start.hidden = true;
+      started = true;
+      if (on) {
+        if (t >= PV.DURATION - 0.05) t = 0;
+        sound.currentTime = t;
+        sound.play().catch(() => {});
+      } else {
+        sound.pause();
+      }
+    };
     const loop = (now) => {
-      if (playing) { t += (now - last) / 1000; if (t >= PV.DURATION) t = 0; }
+      if (playing) {
+        const audioClock = !sound.paused && !sound.ended && sound.readyState >= 2;
+        t = audioClock ? sound.currentTime : t + (now - last) / 1000;
+        if (t >= PV.DURATION) { t = PV.DURATION; setPlaying(false); }
+      }
       last = now;
-      render(t);
+      render(started ? Math.min(t, PV.DURATION - 0.001) : PREVIEW_T);
       scrub.value = t;
       clock.textContent = `${fmt(t)} / ${fmt(PV.DURATION)}`;
       requestAnimationFrame(loop);
     };
-    btn.onclick = () => { playing = !playing; btn.textContent = playing ? "Pause" : "Play"; };
-    scrub.oninput = () => { t = +scrub.value; };
+    start.onclick = () => setPlaying(true);
+    btn.onclick = () => setPlaying(!playing);
+    scrub.oninput = () => { t = +scrub.value; started = true; start.hidden = true; if (playing) sound.currentTime = t; };
+    mute.onclick = () => {
+      sound.muted = !sound.muted;
+      mute.textContent = sound.muted ? "Sound off" : "Sound on";
+      mute.setAttribute("aria-pressed", String(sound.muted));
+    };
     document.addEventListener("keydown", (e) => { if (e.code === "Space") { e.preventDefault(); btn.click(); } });
     requestAnimationFrame(loop);
   }
