@@ -172,9 +172,11 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
                         </a>
                       </Button>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Opens the Shortcuts app - tap <strong>Add Automation</strong> there. Silently runs the
-                        shortcut every night at 11:55 PM so you never have to open the app. Only needed once per
-                        phone.
+                        Opens the Shortcuts app - tap <strong>Add Automation</strong>, then tap the{" "}
+                        <strong>&quot;Automation is turned off&quot;</strong> banner at the top to switch it on.
+                        Apple always adds a shared automation switched off as a safety default, so this one extra tap
+                        is unavoidable - but only needed once per phone. Once it&apos;s on, it silently runs the
+                        shortcut every night at 11:55 PM so you never have to open the app.
                       </p>
                     </li>
                   ) : null}
