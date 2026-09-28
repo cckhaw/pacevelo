@@ -12,6 +12,20 @@ async function ensureActivityRecognitionPermission() {
   await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION);
 }
 
+/**
+ * The native Kotlin app kept a live sensor listener registered the whole
+ * time its screen was open, so "steps today" updated continuously as you
+ * walked. This app instead takes one reading per call (see steps.android.ts
+ * / the step-counter module), so without polling, "steps today" would only
+ * ever update on an explicit "Sync now" tap - and the very first reading of
+ * each day always reports 0 by design (it's establishing that day's
+ * baseline, not measuring against it yet). Polling every few seconds while
+ * this screen has focus keeps the display live, matching the old app, and
+ * self-corrects out of that first-reading-is-0 moment as soon as any steps
+ * happen after it.
+ */
+const STEPS_POLL_INTERVAL_MS = 5_000;
+
 export default function HomeScreen() {
   const [configured, setConfigured] = useState(false);
   const [sensorAvailable] = useState(() => hasStepCounterSensor());
@@ -24,6 +38,16 @@ export default function HomeScreen() {
     const result = await getStatus(syncUrl);
     if (result) setStatus(result);
   }, []);
+
+  const refreshStepsToday = useCallback(async () => {
+    if (!sensorAvailable) return;
+    try {
+      setStepsToday(await getStepsToday());
+    } catch {
+      // Best-effort live display refresh - a real failure still surfaces
+      // from the explicit "Sync now" action below.
+    }
+  }, [sensorAvailable]);
 
   const refreshConfigured = useCallback(async () => {
     const isSet = await isConfigured();
@@ -46,6 +70,16 @@ export default function HomeScreen() {
     useCallback(() => {
       void refreshConfigured();
     }, [refreshConfigured]),
+  );
+
+  // Keeps "steps today" live while this screen is open (see
+  // STEPS_POLL_INTERVAL_MS above for why this is needed at all).
+  useFocusEffect(
+    useCallback(() => {
+      void refreshStepsToday();
+      const interval = setInterval(() => void refreshStepsToday(), STEPS_POLL_INTERVAL_MS);
+      return () => clearInterval(interval);
+    }, [refreshStepsToday]),
   );
 
   async function handleSync() {
@@ -81,7 +115,7 @@ export default function HomeScreen() {
       {status ? (
         <View style={styles.statusBlock}>
           <Text style={styles.statusLine}>
-            Connected as {status.fullName} ({status.email})
+            Connected as {status.profile.fullName} ({status.profile.email})
           </Text>
           <Text style={styles.statusLine}>
             {status.challenges.length === 0
