@@ -18,7 +18,7 @@
       "package": "cc.khaw.pacevelo.stepreporter",
       "permissions": ["android.permission.ACTIVITY_RECOGNITION"],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B1220",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
