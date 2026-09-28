@@ -1,15 +1,22 @@
 {
   "expo": {
-    "name": "mobile-app",
-    "slug": "mobile-app",
+    "name": "PaceVelo Steps",
+    "slug": "pacevelo-steps",
+    "scheme": "pacevelosteps",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "cc.khaw.pacevelo.stepreporter",
+      "infoPlist": {
+        "NSMotionUsageDescription": "PaceVelo reads your step count so it can report your daily steps for a PaceVelo challenge."
+      }
     },
     "android": {
+      "package": "cc.khaw.pacevelo.stepreporter",
+      "permissions": ["android.permission.ACTIVITY_RECOGNITION"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +27,19 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-background-task",
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PaceVelo scans your dashboard's setup QR code to connect this phone to your account.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ]
   }
 }
