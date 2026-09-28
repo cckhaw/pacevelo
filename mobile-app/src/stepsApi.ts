@@ -39,8 +39,7 @@ export interface LastSync {
 }
 
 export interface SyncStatus {
-  fullName: string;
-  email: string;
+  profile: { fullName: string; email: string };
   challenges: SyncedChallenge[];
   lastSync: LastSync | null;
 }
