@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="match_parent">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
     android:gravity="center_horizontal"
     android:padding="24dp">
@@ -25,6 +29,41 @@
         android:text="@string/not_set_up"
         android:textSize="14sp"
         android:textColor="@color/pacevelo_text_primary" />
+
+    <!-- Populated from GET /api/devices/status once connected - who this
+         device is reporting as, which currently-active steps challenge (if
+         any) that counts toward, and when a sync last actually landed.
+         Gone (not just empty) until the first successful status fetch, so
+         nothing flashes an empty line while that request is in flight. -->
+    <TextView
+        android:id="@+id/accountInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:textSize="13sp"
+        android:textColor="@color/pacevelo_text_secondary"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/challengeInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:textSize="13sp"
+        android:textColor="@color/pacevelo_text_secondary"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/lastSyncInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:textSize="13sp"
+        android:textColor="@color/pacevelo_text_secondary"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/scanButton"
@@ -78,3 +117,5 @@
         android:textSize="12sp"
         android:textColor="@color/pacevelo_text_hint" />
 </LinearLayout>
+
+</ScrollView>

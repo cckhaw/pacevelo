@@ -31,6 +31,11 @@ export function iosShortcutInstallUrl(): string | null {
  * Automation -> ..." setup (still covered in ShortcutManualSteps as a
  * fallback for anyone without this link). Optional - unset until someone
  * builds and shares that automation, same as NEXT_PUBLIC_IOS_SHORTCUT_ICLOUD_URL.
+ *
+ * One thing this link can't do anything about: Apple always imports a
+ * shared automation switched OFF, no matter how the original was
+ * configured - there's no parameter here to override it, so the dashboard's
+ * instructions tell people to flip that toggle themselves after adding it.
  */
 export function iosShortcutAutomationInstallUrl(): string | null {
   const url = process.env.NEXT_PUBLIC_IOS_SHORTCUT_AUTOMATION_ICLOUD_URL;

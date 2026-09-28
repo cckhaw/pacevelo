@@ -44,6 +44,8 @@ export default async function DashboardPage({
     orderBy: (t, { desc }) => [desc(t.joinedAt)],
     with: { challenge: { columns: { id: true, title: true, isActive: true, endDate: true } } },
   });
+  const activeEnrollments = enrollments.filter((e) => !isPast(e.challenge.endDate));
+  const endedEnrollments = enrollments.filter((e) => isPast(e.challenge.endDate));
 
   let tokenStatus: "connected" | "error" = "error";
   if (profile.stravaAthleteId) {
@@ -174,26 +176,53 @@ export default async function DashboardPage({
                 Ask your HR admin for a challenge invite link to get started.
               </p>
             ) : (
-              enrollments.map(({ challenge }) => {
-                const hasEnded = isPast(challenge.endDate);
-                return (
-                  <div key={challenge.id} className="flex items-center justify-between rounded-md border px-3 py-2">
-                    <div>
-                      <p className="text-sm font-medium">{challenge.title}</p>
-                      {hasEnded ? <Badge variant="secondary">Ended</Badge> : null}
+              <>
+                {activeEnrollments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No active challenges right now.</p>
+                ) : (
+                  activeEnrollments.map(({ challenge }) => (
+                    <ChallengeRow key={challenge.id} challenge={challenge} companySlug={profile.company?.slug} />
+                  ))
+                )}
+                {endedEnrollments.length > 0 ? (
+                  <details className="pt-1 text-sm">
+                    <summary className="cursor-pointer text-muted-foreground">
+                      Ended challenges ({endedEnrollments.length})
+                    </summary>
+                    <div className="mt-2 space-y-2">
+                      {endedEnrollments.map(({ challenge }) => (
+                        <ChallengeRow key={challenge.id} challenge={challenge} companySlug={profile.company?.slug} />
+                      ))}
                     </div>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/company/${profile.company?.slug}?challengeId=${challenge.id}`}>
-                        <Trophy className="h-3.5 w-3.5" /> Leaderboard
-                      </Link>
-                    </Button>
-                  </div>
-                );
-              })
+                  </details>
+                ) : null}
+              </>
             )}
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function ChallengeRow({
+  challenge,
+  companySlug,
+}: {
+  challenge: { id: string; title: string; endDate: Date };
+  companySlug: string | undefined;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-md border px-3 py-2">
+      <div>
+        <p className="text-sm font-medium">{challenge.title}</p>
+        {isPast(challenge.endDate) ? <Badge variant="secondary">Ended</Badge> : null}
+      </div>
+      <Button asChild variant="outline" size="sm">
+        <Link href={`/company/${companySlug}?challengeId=${challenge.id}`}>
+          <Trophy className="h-3.5 w-3.5" /> Leaderboard
+        </Link>
+      </Button>
     </div>
   );
 }
