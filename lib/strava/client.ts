@@ -23,6 +23,23 @@ export interface StravaTokenExchangeResult extends StravaTokenResponse {
   athlete: StravaAthlete;
 }
 
+/** A non-2xx response from Strava, keeping the status and body so callers can tell "token revoked" apart from a transient failure. */
+export class StravaApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly body: string,
+  ) {
+    super(message);
+    this.name = "StravaApiError";
+  }
+}
+
+async function stravaApiError(what: string, response: Response): Promise<StravaApiError> {
+  const body = await response.text();
+  return new StravaApiError(`Strava ${what} failed: ${response.status} ${body}`, response.status, body);
+}
+
 function stravaCredentials() {
   const clientId = process.env.STRAVA_CLIENT_ID;
   const clientSecret = process.env.STRAVA_CLIENT_SECRET;
@@ -62,7 +79,7 @@ export async function deauthorizeStrava(accessToken: string): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error(`Strava deauthorize failed: ${response.status} ${await response.text()}`);
+    throw await stravaApiError("deauthorize", response);
   }
 }
 
@@ -82,7 +99,7 @@ export async function refreshStravaToken(refreshToken: string): Promise<StravaTo
   });
 
   if (!response.ok) {
-    throw new Error(`Strava token refresh failed: ${response.status} ${await response.text()}`);
+    throw await stravaApiError("token refresh", response);
   }
 
   return response.json();
@@ -107,7 +124,7 @@ export async function getStravaActivity(
   });
 
   if (!response.ok) {
-    throw new Error(`Strava get-activity failed: ${response.status} ${await response.text()}`);
+    throw await stravaApiError("get-activity", response);
   }
 
   return response.json();

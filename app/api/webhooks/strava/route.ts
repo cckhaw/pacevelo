@@ -1,5 +1,9 @@
 import { NextResponse, after, type NextRequest } from "next/server";
-import { processActivityCreated } from "@/lib/strava/webhook-processing";
+import {
+  processActivityChanged,
+  processActivityDeleted,
+  processAthleteDeauthorized,
+} from "@/lib/strava/webhook-processing";
 
 /**
  * Strava calls this with a GET request once, right after we create a push
@@ -35,6 +39,13 @@ interface StravaWebhookEvent {
  * Receives activity/athlete change events. Strava requires a 200 response
  * within two seconds, so the actual sync work runs in `after()` once the
  * response has already been sent.
+ *
+ * Handled:
+ * - activity create / update: re-fetch and reconcile the activity.
+ * - activity delete: remove it. Strava also sends this when an activity is
+ *   made private ("Only You"), and a create again if it's made visible.
+ * - athlete update with authorized=false: the athlete revoked PaceVelo on
+ *   Strava, so drop their stored connection.
  */
 export async function POST(request: NextRequest) {
   let event: StravaWebhookEvent;
@@ -44,12 +55,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (event.object_type === "activity" && event.aspect_type === "create") {
+  // Strava doesn't sign event payloads, so the subscription id (issued once
+  // when the subscription is created) is the only thing tying an event to
+  // ours. Optional so existing deployments keep working until it's set.
+  const expectedSubscriptionId = process.env.STRAVA_WEBHOOK_SUBSCRIPTION_ID;
+  if (expectedSubscriptionId && String(event.subscription_id) !== expectedSubscriptionId) {
+    return NextResponse.json({ error: "Unknown subscription" }, { status: 403 });
+  }
+
+  const run = (work: () => Promise<void>) =>
     after(() =>
-      processActivityCreated(event.owner_id, event.object_id).catch((err) => {
+      work().catch((err) => {
         console.error("Strava webhook processing failed", { event, err });
       }),
     );
+
+  if (event.object_type === "activity") {
+    if (event.aspect_type === "delete") {
+      run(() => processActivityDeleted(event.owner_id, event.object_id));
+    } else {
+      run(() => processActivityChanged(event.owner_id, event.object_id));
+    }
+  } else if (
+    event.object_type === "athlete" &&
+    event.aspect_type === "update" &&
+    event.updates?.authorized === "false"
+  ) {
+    run(() => processAthleteDeauthorized(event.owner_id));
   }
 
   return NextResponse.json({ received: true });

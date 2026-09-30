@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { challengeParticipants, profiles } from "@/db/schema";
-import { getValidStravaAccessToken } from "@/lib/strava/tokens";
 import { getValidGoogleHealthAccessToken } from "@/lib/google-health/tokens";
 import { GOOGLE_HEALTH_ENABLED } from "@/lib/feature-flags";
 import { isPast } from "@/lib/time";
@@ -47,15 +46,11 @@ export default async function DashboardPage({
   const activeEnrollments = enrollments.filter((e) => !isPast(e.challenge.endDate));
   const endedEnrollments = enrollments.filter((e) => isPast(e.challenge.endDate));
 
-  let tokenStatus: "connected" | "error" = "error";
-  if (profile.stravaAthleteId) {
-    try {
-      await getValidStravaAccessToken(profile.id);
-      tokenStatus = "connected";
-    } catch {
-      tokenStatus = "error";
-    }
-  }
+  // Read from our own records rather than calling Strava on every page view:
+  // revocations arrive by webhook (or surface when a token refresh is
+  // rejected) and clear the stored connection, so this stays accurate.
+  const tokenStatus: "connected" | "error" =
+    profile.stravaAthleteId && profile.stravaRefreshToken ? "connected" : "error";
 
   let googleHealthStatus: "connected" | "error" = "error";
   if (profile.googleHealthUserId) {
