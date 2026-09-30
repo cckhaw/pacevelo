@@ -112,6 +112,8 @@ export interface StravaActivityDetail {
   moving_time: number; // seconds
   total_elevation_gain: number; // meters
   start_date: string; // ISO 8601
+  private?: boolean; // true = "Only You"
+  visibility?: string; // 'everyone' | 'followers_only' | 'only_me'
 }
 
 /** Fetches full telemetry for a single activity, used after an activity.create webhook event. */

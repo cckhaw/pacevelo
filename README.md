@@ -51,8 +51,14 @@ This phase implements:
     activity is made private ("Only You"), and a create again if it's made
     visible.
   - `athlete` **update** with `authorized: "false"` — the athlete revoked
-    PaceVelo in Strava's settings; their stored tokens and athlete id are
-    cleared (past activities stay so finished leaderboards don't change).
+    PaceVelo in Strava's settings; their synced activities (and challenge
+    credits), Strava photo, tokens and athlete id are all deleted, as Strava's
+    API Policy (2.5, 7.4) requires. Every path that ends a connection —
+    this event, a rejected refresh token, disconnecting, the stale cleanup —
+    goes through `clearStravaConnection`, so they all delete the same way.
+  - Activities Strava marks "Only You" are never stored: we request only the
+    `activity:read` scope, and still drop them for athletes who connected
+    earlier with the broader `activity:read_all` scope.
 
   Strava doesn't sign these payloads, so set `STRAVA_WEBHOOK_SUBSCRIPTION_ID`
   (below) to reject events from any other subscription.

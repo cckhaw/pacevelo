@@ -11,7 +11,7 @@ export function DisconnectStravaButton() {
   function handleClick() {
     if (
       !window.confirm(
-        "Disconnect Strava? Your workouts will stop syncing until you reconnect, and this Strava account will be free to connect to a different PaceVelo profile.",
+        "Disconnect Strava? Your workouts will stop syncing, and the Strava data PaceVelo holds for you (including your synced workouts and their challenge results) will be deleted. This Strava account will be free to connect to a different PaceVelo profile.",
       )
     ) {
       return;
