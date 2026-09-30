@@ -12,7 +12,8 @@ const BATCH_SIZE = 100;
  * stop counting against the app's connected-athlete capacity. Anyone
  * affected just reconnects from their dashboard.
  *
- * `?dryRun=1` lists who would be revoked without touching anything. Unlike
+ * `?dryRun=1` lists who would be revoked without touching anything (add
+ * `&days=N` to preview a different cutoff than configured). Unlike
  * the other cron, this one refuses to run at all unless CRON_SECRET is set,
  * since it revokes real connections.
  */
@@ -22,10 +23,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const days = staleAfterDays();
+  const dryRun = request.nextUrl.searchParams.get("dryRun") === "1";
+  // Only a dry run may override the cutoff (`&days=30`), so "what if" previews
+  // are free but a real run always uses the configured value.
+  const requestedDays = Number(request.nextUrl.searchParams.get("days"));
+  const days = dryRun && Number.isFinite(requestedDays) && requestedDays > 0 ? requestedDays : staleAfterDays();
   const stale = await findStaleStravaProfiles(days, BATCH_SIZE);
 
-  if (request.nextUrl.searchParams.get("dryRun") === "1") {
+  if (dryRun) {
     return NextResponse.json({ dryRun: true, staleAfterDays: days, wouldRevoke: stale });
   }
 
