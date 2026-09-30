@@ -4,7 +4,7 @@ import { eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { challengeParticipants, challenges, profiles } from "@/db/schema";
 
-export const DEFAULT_STALE_AFTER_DAYS = 90;
+export const DEFAULT_STALE_AFTER_DAYS = 7;
 
 export function staleAfterDays(): number {
   const configured = Number(process.env.STRAVA_STALE_AFTER_DAYS);

@@ -107,7 +107,7 @@ export default function PrivacyPolicyPage() {
           access and stops further syncing (previously synced activity/step data is not automatically deleted). If
           you revoke PaceVelo&apos;s access from within Strava, we are notified and remove your stored Strava
           credentials. We also automatically disconnect Strava accounts that haven&apos;t been part of any challenge
-          for about 90 days; you can reconnect at any time. When a workout is deleted on Strava, or made private
+          for about 7 days; you can reconnect at any time. When a workout is deleted on Strava, or made private
           there, we remove it from our records as well.
         </p>
         <p>

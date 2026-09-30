@@ -65,7 +65,7 @@ This phase implements:
     revoke PaceVelo on Strava's side too (`lib/strava/connection.ts`).
   - `/api/cron/cleanup-strava` (daily, `vercel.json`) revokes athletes whose
     latest challenge ended more than `STRAVA_STALE_AFTER_DAYS` days ago
-    (default 90), or who never joined one. It **requires `CRON_SECRET`** and
+    (default 7), or who never joined one. It **requires `CRON_SECRET`** and
     supports `?dryRun=1` to preview who would be revoked. A failed Strava call
     leaves the connection in place for the next run to retry.
 - **Public leaderboard** (`/company/[slug]`): individual standings and a
