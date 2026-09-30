@@ -226,14 +226,9 @@ export function LeaderboardView({ slug, initialData }: { slug: string; initialDa
                       <span className="w-6 shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">
                         {rankBadge(index + 1)}
                       </span>
-                      {entry.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- Strava-hosted avatar URL
-                        <img src={entry.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
-                      ) : (
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                          {initialsOf(entry.fullName)}
-                        </span>
-                      )}
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium">
+                        {initialsOf(entry.fullName)}
+                      </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm">
                           {entry.fullName}

@@ -64,7 +64,6 @@ export const profiles = pgTable("profiles", {
   email: text("email").notNull(),
   passwordHash: text("password_hash"),
   fullName: text("full_name").notNull(),
-  avatarUrl: text("avatar_url"),
   department: text("department"),
   role: text("role").$type<ProfileRole>().notNull().default("employee"),
   stravaAthleteId: bigint("strava_athlete_id", { mode: "number" }).unique(),

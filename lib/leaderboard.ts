@@ -24,14 +24,12 @@ export function initialsOf(name: string) {
 export interface RosterMember {
   profileId: string;
   fullName: string;
-  avatarUrl: string | null;
   department: string | null;
 }
 
 export interface LeaderboardActivityRow {
   profileId: string;
   fullName: string;
-  avatarUrl: string | null;
   department: string | null;
   type: ActivityType;
   distanceMeters: number;
@@ -42,7 +40,6 @@ export interface LeaderboardActivityRow {
 export interface LeaderboardStepRow {
   profileId: string;
   fullName: string;
-  avatarUrl: string | null;
   department: string | null;
   steps: number;
 }
@@ -50,7 +47,6 @@ export interface LeaderboardStepRow {
 export interface IndividualStanding {
   profileId: string;
   fullName: string;
-  avatarUrl: string | null;
   department: string | null;
   value: number;
   activityCount: number;
@@ -94,7 +90,6 @@ export function buildIndividualStandings(
     byProfile.set(member.profileId, {
       profileId: member.profileId,
       fullName: member.fullName,
-      avatarUrl: member.avatarUrl,
       department: member.department,
       value: 0,
       activityCount: 0,
@@ -113,7 +108,6 @@ export function buildIndividualStandings(
       byProfile.set(row.profileId, {
         profileId: row.profileId,
         fullName: row.fullName,
-        avatarUrl: row.avatarUrl,
         department: row.department,
         value,
         activityCount: 1,
@@ -178,7 +172,6 @@ export function buildIndividualStepStandings(roster: RosterMember[], rows: Leade
     byProfile.set(member.profileId, {
       profileId: member.profileId,
       fullName: member.fullName,
-      avatarUrl: member.avatarUrl,
       department: member.department,
       value: 0,
       activityCount: 0,
@@ -194,7 +187,6 @@ export function buildIndividualStepStandings(roster: RosterMember[], rows: Leade
       byProfile.set(row.profileId, {
         profileId: row.profileId,
         fullName: row.fullName,
-        avatarUrl: row.avatarUrl,
         department: row.department,
         value: row.steps,
         activityCount: 1,

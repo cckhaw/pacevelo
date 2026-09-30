@@ -12,10 +12,10 @@ export function StravaConsentNotice({ className }: { className?: string }) {
     <div className={`space-y-1.5 rounded-md border bg-secondary/60 px-3 py-2.5 text-xs text-muted-foreground ${className ?? ""}`}>
       <p className="font-medium text-foreground">What connecting Strava shares with PaceVelo</p>
       <p>
-        With your permission on Strava, PaceVelo receives your Strava athlete ID, name and profile photo, and - through
+        With your permission on Strava, PaceVelo receives your Strava athlete ID and name, and - through
         Strava&apos;s authorization and automatic updates - the type, distance, moving time, elevation gain and date of
         each new activity that counts toward a challenge you&apos;ve joined. Activities you&apos;ve set to
-        &quot;Only You&quot; on Strava are not used. Your name, photo, department and challenge totals appear on your
+        &quot;Only You&quot; on Strava are not used. Your name, department and challenge totals appear on your
         company&apos;s leaderboard.
       </p>
       <p>

@@ -115,7 +115,6 @@ export async function getLeaderboardData(
     .select({
       profileId: challengeParticipants.profileId,
       fullName: profiles.fullName,
-      avatarUrl: profiles.avatarUrl,
       department: profiles.department,
     })
     .from(challengeParticipants)
@@ -130,7 +129,6 @@ export async function getLeaderboardData(
       .select({
         profileId: stepEntries.profileId,
         fullName: profiles.fullName,
-        avatarUrl: profiles.avatarUrl,
         department: profiles.department,
         steps: stepEntries.steps,
       })
@@ -158,7 +156,6 @@ export async function getLeaderboardData(
     .select({
       profileId: activities.profileId,
       fullName: profiles.fullName,
-      avatarUrl: profiles.avatarUrl,
       department: profiles.department,
       type: activities.type,
       distanceMeters: activities.distanceMeters,
@@ -192,7 +189,6 @@ export interface ParticipantDayBreakdown {
 export interface ParticipantBreakdown {
   profileId: string;
   fullName: string;
-  avatarUrl: string | null;
   department: string | null;
   metricType: MetricType;
   totalValue: number;
@@ -226,7 +222,6 @@ export async function getParticipantBreakdown(
     .select({
       profileId: challengeParticipants.profileId,
       fullName: profiles.fullName,
-      avatarUrl: profiles.avatarUrl,
       department: profiles.department,
     })
     .from(challengeParticipants)

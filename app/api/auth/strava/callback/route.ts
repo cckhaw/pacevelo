@@ -4,6 +4,7 @@ import { exchangeStravaCode } from "@/lib/strava/client";
 import { decodeStravaState } from "@/lib/strava/state";
 import { createSession } from "@/lib/session";
 import { checkEmployeeLimit } from "@/lib/company-limits";
+import { placeholderEmailForStrava } from "@/lib/profile-email";
 import { db } from "@/db";
 import { companies, profiles } from "@/db/schema";
 
@@ -131,13 +132,12 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const syntheticEmail = `strava-${athlete.id}@users.pacevelo.app`;
+      const syntheticEmail = placeholderEmailForStrava(athlete.id);
       const [created] = await db
         .insert(profiles)
         .values({
           email: syntheticEmail,
           fullName,
-          avatarUrl: athlete.profile,
           role: "employee",
           companyId: company?.id ?? null,
           ...tokenFields,

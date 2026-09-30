@@ -50,6 +50,13 @@
       "when": 1790316523238,
       "tag": "0006_powerful_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790759263622,
+      "tag": "0007_loving_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }
