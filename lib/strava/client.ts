@@ -1,7 +1,7 @@
 import "server-only";
 
 const STRAVA_OAUTH_TOKEN_URL = "https://www.strava.com/oauth/token";
-const STRAVA_API_BASE = "https://www.strava.com/api/v3";
+const DEFAULT_STRAVA_API_BASE = "https://www.strava.com/api/v3";
 export const STRAVA_AUTHORIZE_URL = "https://www.strava.com/oauth/authorize";
 
 export interface StravaAthlete {
@@ -21,6 +21,17 @@ interface StravaTokenResponse {
 
 export interface StravaTokenExchangeResult extends StravaTokenResponse {
   athlete: StravaAthlete;
+}
+
+/**
+ * Base URL for Strava's REST API (activity reads). Strava is moving it to
+ * https://api-v3.strava.com from 2027-01-04 (that host doesn't exist before
+ * then), so it's overridable via STRAVA_API_BASE_URL - the switch becomes an
+ * env change once the new host is live. The OAuth URLs are separate and
+ * unchanged: Strava hasn't said whether those move.
+ */
+function stravaApiBase(): string {
+  return (process.env.STRAVA_API_BASE_URL?.trim() || DEFAULT_STRAVA_API_BASE).replace(/\/+$/, "");
 }
 
 /** A non-2xx response from Strava, keeping the status and body so callers can tell "token revoked" apart from a transient failure. */
@@ -121,7 +132,7 @@ export async function getStravaActivity(
   accessToken: string,
   activityId: number,
 ): Promise<StravaActivityDetail> {
-  const response = await fetch(`${STRAVA_API_BASE}/activities/${activityId}`, {
+  const response = await fetch(`${stravaApiBase()}/activities/${activityId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
