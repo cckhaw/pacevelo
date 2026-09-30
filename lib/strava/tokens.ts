@@ -2,7 +2,7 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { activities, profiles } from "@/db/schema";
+import { profiles } from "@/db/schema";
 import { StravaApiError, refreshStravaToken } from "@/lib/strava/client";
 
 const EXPIRY_BUFFER_MS = 60_000;
@@ -16,25 +16,18 @@ export class StravaConnectionRevokedError extends Error {
 }
 
 /**
- * Ends a profile's Strava connection locally: deletes the Strava data we hold
- * for them (synced activities - their challenge credits cascade - and the
- * Strava profile photo URL), then forgets the athlete id + tokens, which also
- * frees that Strava account to be connected to a different profile. Strava's
- * API Policy (2.5, 7.4) requires deleting an athlete's data when they revoke
- * access, so every path that ends a connection goes through here.
+ * Forgets a profile's Strava connection locally (athlete id + tokens), which
+ * also frees that Strava account to be connected to a different profile.
+ * Deliberately leaves their synced activities alone: those belong to the
+ * challenges they were credited to and are deleted on a schedule after the
+ * challenge ends (see lib/strava/retention.ts), so reconnecting mid-challenge
+ * doesn't cost anyone their progress.
  * Does not call Strava - see `revokeStravaConnection` for that.
- *
- * Data is deleted before the tokens are cleared on purpose: if this fails
- * partway, the connection is still there for a retry (the athlete id is what
- * every later cleanup path keys off), rather than leaving orphaned data with
- * nothing pointing at it.
  */
 export async function clearStravaConnection(profileId: string): Promise<void> {
-  await db.delete(activities).where(eq(activities.profileId, profileId));
   await db
     .update(profiles)
     .set({
-      avatarUrl: null,
       stravaAthleteId: null,
       stravaAccessToken: null,
       stravaRefreshToken: null,

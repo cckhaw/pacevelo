@@ -185,10 +185,10 @@ export async function processActivityDeleted(ownerId: number, activityId: number
 
 /**
  * Handles a Strava `athlete.update` event with `authorized: "false"` - the
- * athlete revoked PaceVelo from their Strava settings. Deletes their synced
- * Strava data (Strava's API Policy requires this on revocation) and forgets
- * their tokens and athlete id, so the profile shows as disconnected and can
- * reconnect.
+ * athlete revoked PaceVelo from their Strava settings. Forgets their tokens
+ * and athlete id, so the profile shows as disconnected and can reconnect.
+ * Their synced activities stay until the retention window after their
+ * challenges end (lib/strava/retention.ts).
  */
 export async function processAthleteDeauthorized(ownerId: number): Promise<void> {
   const profile = await findProfileByAthleteId(ownerId);

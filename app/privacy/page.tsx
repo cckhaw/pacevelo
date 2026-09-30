@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPageLayout, LegalSection } from "@/components/legal-page-layout";
 import { CONTACT_EMAIL } from "@/lib/contact";
+import { dataRetentionDays, staleAfterDays } from "@/lib/strava/config";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — PaceVelo",
@@ -104,13 +105,21 @@ export default function PrivacyPolicyPage() {
         <p>
           We retain your information for as long as your account and your company&apos;s access to PaceVelo remain
           active. You can disconnect Strava at any time from your dashboard, which revokes our access, stops further
-          syncing, and deletes the Strava data we hold for you - your synced workouts (and their challenge results),
-          your Strava profile photo, and your Strava credentials. If you instead remove PaceVelo&apos;s access from
-          within Strava, we are notified and delete the same data. We also automatically disconnect (and delete the
-          Strava data of) Strava accounts that haven&apos;t been part of any challenge for about 7 days; you can
-          reconnect at any time. When a workout is deleted on Strava, or set to &quot;Only You&quot; there, we remove
-          it from our records as well. Disconnecting Google Health does not automatically delete previously synced
-          step data.
+          syncing, and removes your Strava credentials; if you instead remove PaceVelo&apos;s access from within
+          Strava, we are notified and do the same.
+        </p>
+        <p>
+          Strava activity data we have already synced (activity type, distance, moving time, elevation gain, and date)
+          is kept only for the challenges it counts toward, and is deleted automatically {dataRetentionDays()} days
+          after each of those challenges ends. This applies whether or not you have disconnected Strava. You can ask
+          us to delete it sooner by emailing{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline-offset-4 hover:underline">
+            {CONTACT_EMAIL}
+          </a>
+          . We also automatically disconnect Strava accounts that haven&apos;t been part of any challenge for about{" "}
+          {staleAfterDays()} days; you can reconnect at any time. When a workout is deleted on Strava, or set to
+          &quot;Only You&quot; there, we remove it from our records as well. Disconnecting Google Health does not
+          automatically delete previously synced step data.
         </p>
         <p>
           To delete your account entirely, ask your company&apos;s HR admin or email{" "}

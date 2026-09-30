@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CONTACT_EMAIL } from "@/lib/contact";
+import { dataRetentionDays } from "@/lib/strava/config";
 
 /**
  * Shown next to every "connect Strava" step. Strava's API Policy (2.1, 7.2)
@@ -19,8 +20,9 @@ export function StravaConsentNotice({ className }: { className?: string }) {
       </p>
       <p>
         You can withdraw at any time by disconnecting Strava on your PaceVelo dashboard, or by removing PaceVelo in
-        Strava&apos;s settings - either way, your Strava data is then deleted from PaceVelo. To request deletion of your
-        data or get help, email{" "}
+        Strava&apos;s settings - either way, syncing stops. Activities already synced are kept for {dataRetentionDays()}{" "}
+        days after the challenge they count toward ends, then deleted. To request earlier deletion of your data or get
+        help, email{" "}
         <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary underline-offset-4 hover:underline">
           {CONTACT_EMAIL}
         </a>{" "}
