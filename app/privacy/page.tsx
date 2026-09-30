@@ -104,7 +104,11 @@ export default function PrivacyPolicyPage() {
         <p>
           We retain your information for as long as your account and your company&apos;s access to PaceVelo remain
           active. You can disconnect Strava or Google Health at any time from your dashboard, which revokes our
-          access and stops further syncing (previously synced activity/step data is not automatically deleted).
+          access and stops further syncing (previously synced activity/step data is not automatically deleted). If
+          you revoke PaceVelo&apos;s access from within Strava, we are notified and remove your stored Strava
+          credentials. We also automatically disconnect Strava accounts that haven&apos;t been part of any challenge
+          for about 90 days; you can reconnect at any time. When a workout is deleted on Strava, or made private
+          there, we remove it from our records as well.
         </p>
         <p>
           To delete your account entirely, ask your company&apos;s HR admin or email{" "}

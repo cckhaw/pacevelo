@@ -6,8 +6,7 @@ import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireBackoffice } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
-import { getValidStravaAccessToken } from "@/lib/strava/tokens";
-import { deauthorizeStrava } from "@/lib/strava/client";
+import { revokeStravaConnection } from "@/lib/strava/connection";
 import { getValidGoogleHealthAccessToken } from "@/lib/google-health/tokens";
 import { revokeGoogleHealthToken } from "@/lib/google-health/client";
 import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
@@ -104,20 +103,9 @@ export async function disconnectUserStrava(profileId: string, companyId: string)
   if (!user) return { error: "User not found in this company." };
   if (!user.stravaAthleteId) return { error: "No Strava account is connected." };
 
-  try {
-    const accessToken = await getValidStravaAccessToken(profileId);
-    await deauthorizeStrava(accessToken);
-  } catch (err) {
-    // Still unlink locally even if revoking with Strava fails (e.g. the
-    // token was already invalid) - the important part is freeing this
-    // athlete id up for a different profile to connect.
-    console.error("Failed to revoke Strava access during admin disconnect", err);
-  }
-
-  await db
-    .update(profiles)
-    .set({ stravaAthleteId: null, stravaAccessToken: null, stravaRefreshToken: null, stravaTokenExpiresAt: null })
-    .where(eq(profiles.id, profileId));
+  // Unlinks locally even if revoking with Strava fails - the important part
+  // is freeing this athlete id up for a different profile to connect.
+  await revokeStravaConnection(profileId);
 
   revalidateUsers(companyId);
   return {};
@@ -159,6 +147,11 @@ export async function deleteUser(profileId: string, companyId: string): Promise<
 
   const user = await loadUserInCompany(profileId, companyId);
   if (!user) return { error: "User not found in this company." };
+
+  // Deleting the profile would otherwise leave their Strava authorization
+  // alive on Strava's side with nothing left here able to revoke it - it
+  // would count against this app's connected-athlete capacity forever.
+  if (user.stravaAthleteId) await revokeStravaConnection(profileId);
 
   await db.delete(profiles).where(eq(profiles.id, profileId));
 

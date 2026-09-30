@@ -5,8 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { getSession } from "@/lib/session";
-import { getValidStravaAccessToken } from "@/lib/strava/tokens";
-import { deauthorizeStrava } from "@/lib/strava/client";
+import { revokeStravaConnection } from "@/lib/strava/connection";
 import { revokeGoogleHealthToken } from "@/lib/google-health/client";
 import { syncStepsForProfile } from "@/lib/google-health/sync";
 
@@ -27,25 +26,9 @@ export async function disconnectStrava(): Promise<DisconnectStravaState> {
     return { error: "No Strava account is connected." };
   }
 
-  try {
-    const accessToken = await getValidStravaAccessToken(session.userId);
-    await deauthorizeStrava(accessToken);
-  } catch (err) {
-    // Still unlink locally even if revoking with Strava fails (e.g. the
-    // token was already invalid) - the important part is freeing this
-    // athlete ID up for a different profile to connect.
-    console.error("Failed to revoke Strava access during disconnect", err);
-  }
-
-  await db
-    .update(profiles)
-    .set({
-      stravaAthleteId: null,
-      stravaAccessToken: null,
-      stravaRefreshToken: null,
-      stravaTokenExpiresAt: null,
-    })
-    .where(eq(profiles.id, session.userId));
+  // Unlinks locally even if revoking with Strava fails - the important part
+  // is freeing this athlete ID up for a different profile to connect.
+  await revokeStravaConnection(session.userId);
 
   revalidatePath("/dashboard");
   return {};

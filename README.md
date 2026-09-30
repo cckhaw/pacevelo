@@ -39,12 +39,35 @@ This phase implements:
 
 - **Strava webhook handler** (`/api/webhooks/strava`): `GET` answers the
   one-time `hub.challenge` handshake Strava sends when a push subscription
-  is created (see setup below). `POST` receives `activity.create` events,
-  acks within Strava's 2-second window, then (via `after()`) fetches the
-  full activity, matches it to whichever of the company's active challenges
-  covers that activity type/date/department, and inserts it into
-  `activities` — idempotently, since Strava can redeliver the same event
-  (`lib/strava/webhook-processing.ts`).
+  is created (see setup below). `POST` acks within Strava's 2-second window,
+  then (via `after()`) handles, all in `lib/strava/webhook-processing.ts`:
+  - `activity` **create / update** — fetches the current activity and
+    reconciles it against every challenge the athlete joined: upserts it,
+    credits the ones it qualifies for, and drops credits from still-open
+    challenges it no longer qualifies for (e.g. its type was edited).
+    Deactivated or ended challenges are never rewritten by a later edit.
+    Idempotent, since Strava can redeliver the same event.
+  - `activity` **delete** — removes it. Strava also sends this when an
+    activity is made private ("Only You"), and a create again if it's made
+    visible.
+  - `athlete` **update** with `authorized: "false"` — the athlete revoked
+    PaceVelo in Strava's settings; their stored tokens and athlete id are
+    cleared (past activities stay so finished leaderboards don't change).
+
+  Strava doesn't sign these payloads, so set `STRAVA_WEBHOOK_SUBSCRIPTION_ID`
+  (below) to reject events from any other subscription.
+- **Connection hygiene**, so athletes who are gone don't count against
+  Strava's connected-athlete capacity:
+  - A refresh token Strava rejects (athlete revoked access) clears the stored
+    connection (`lib/strava/tokens.ts`). The dashboard reads connection state
+    from our own records and makes no Strava call on page view.
+  - Disconnecting (self-serve or from the back office) **and deleting a user**
+    revoke PaceVelo on Strava's side too (`lib/strava/connection.ts`).
+  - `/api/cron/cleanup-strava` (daily, `vercel.json`) revokes athletes whose
+    latest challenge ended more than `STRAVA_STALE_AFTER_DAYS` days ago
+    (default 90), or who never joined one. It **requires `CRON_SECRET`** and
+    supports `?dryRun=1` to preview who would be revoked. A failed Strava call
+    leaves the connection in place for the next run to retry.
 - **Public leaderboard** (`/company/[slug]`): individual standings and a
   departmental battle, ranked by whichever metric the active challenge
   uses (distance/time/elevation), with an activity-type filter. "Live"
@@ -69,8 +92,9 @@ curl -X POST https://www.strava.com/api/v3/push_subscriptions \
 
 Strava immediately calls back with a `GET` to `callback_url` carrying
 `hub.challenge`; our route answers it automatically, and the command above
-returns the new subscription's `id` once that succeeds. To confirm it's
-active, or to find its `id` for deletion:
+returns the new subscription's `id` once that succeeds. Set that `id` as
+`STRAVA_WEBHOOK_SUBSCRIPTION_ID` so events from any other subscription are
+rejected. To confirm it's active, or to find its `id` for deletion:
 
 ```bash
 curl "https://www.strava.com/api/v3/push_subscriptions?client_id=$STRAVA_CLIENT_ID&client_secret=$STRAVA_CLIENT_SECRET"
