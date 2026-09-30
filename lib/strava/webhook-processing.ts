@@ -79,6 +79,15 @@ export async function processActivityChanged(ownerId: number, activityId: number
     throw err;
   }
 
+  // Athletes who connected before we dropped the `activity:read_all` scope
+  // still hold a token that can read "Only You" activities. Respect their
+  // privacy setting the same way an `activity:read` token would: treat it as
+  // gone.
+  if (activity.private === true || activity.visibility === "only_me") {
+    await processActivityDeleted(ownerId, activityId);
+    return;
+  }
+
   const startDate = new Date(activity.start_date);
   const type = isTrackedActivityType(activity.type) ? activity.type : null; // e.g. Hike, Swim - not a type any challenge tracks.
   const enrolled = await loadEnrolledChallenges(profile.id);
@@ -177,8 +186,9 @@ export async function processActivityDeleted(ownerId: number, activityId: number
 /**
  * Handles a Strava `athlete.update` event with `authorized: "false"` - the
  * athlete revoked PaceVelo from their Strava settings. Forgets their tokens
- * and athlete id so the profile shows as disconnected (and can reconnect).
- * Their past activities stay, so finished leaderboards aren't rewritten.
+ * and athlete id, so the profile shows as disconnected and can reconnect.
+ * Their synced activities stay until the retention window after their
+ * challenges end (lib/strava/retention.ts).
  */
 export async function processAthleteDeauthorized(ownerId: number): Promise<void> {
   const profile = await findProfileByAthleteId(ownerId);

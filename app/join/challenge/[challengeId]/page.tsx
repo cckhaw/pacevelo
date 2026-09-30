@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChallengeJoinForm } from "@/components/join/challenge-join-form";
+import { StravaConsentNotice } from "@/components/strava-consent-notice";
 import { LogoMark } from "@/components/logo";
 import { db } from "@/db";
 import { challenges } from "@/db/schema";
@@ -60,11 +61,14 @@ export default async function JoinChallengePage({
               This challenge has already ended.
             </p>
           ) : (
-            <ChallengeJoinForm
-              challengeId={challenge.id}
-              emailDomain={challenge.emailDomain}
-              targetDepartments={challenge.targetDepartments}
-            />
+            <div className="space-y-4">
+              {challenge.dataSource === "strava" ? <StravaConsentNotice /> : null}
+              <ChallengeJoinForm
+                challengeId={challenge.id}
+                emailDomain={challenge.emailDomain}
+                targetDepartments={challenge.targetDepartments}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

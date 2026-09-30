@@ -4,12 +4,7 @@ import { eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { challengeParticipants, challenges, profiles } from "@/db/schema";
 
-export const DEFAULT_STALE_AFTER_DAYS = 7;
-
-export function staleAfterDays(): number {
-  const configured = Number(process.env.STRAVA_STALE_AFTER_DAYS);
-  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_STALE_AFTER_DAYS;
-}
+export { DEFAULT_STALE_AFTER_DAYS, staleAfterDays } from "@/lib/strava/config";
 
 /**
  * Profiles that still hold a Strava authorization but have had no reason to

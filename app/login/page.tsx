@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/login-form";
 import { LogoInline, LogoMark } from "@/components/logo";
+import { StravaConsentNotice } from "@/components/strava-consent-notice";
+import { ConnectWithStravaImage } from "@/components/connect-with-strava";
 import { signOutAndReconnectStrava, signOutAndReconnectGoogleHealth } from "@/app/login/actions";
 
 const ERROR_MESSAGES: Record<string, (hint?: string) => string> = {
@@ -55,10 +57,14 @@ export default async function LoginPage({
             ) : null}
 
             {error === "strava_account_already_linked_no_password" ? (
-              <form action={signOutAndReconnectStrava}>
-                <Button type="submit" variant="outline" className="w-full">
-                  Sign out & connect with Strava
-                </Button>
+              <form action={signOutAndReconnectStrava} className="space-y-2">
+                <StravaConsentNotice />
+                <p className="text-center text-xs text-muted-foreground">
+                  This signs you out first, then takes you to Strava to connect that account.
+                </p>
+                <button type="submit" aria-label="Sign out and connect with Strava" className="mx-auto block w-fit">
+                  <ConnectWithStravaImage />
+                </button>
               </form>
             ) : null}
 

@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("approval_prompt", "auto");
-  authorizeUrl.searchParams.set("scope", "read,activity:read_all");
+  // `activity:read`, not `activity:read_all`: the latter also exposes
+  // activities the athlete set to "Only You", and Strava's agreement requires
+  // respecting athletes' privacy choices.
+  authorizeUrl.searchParams.set("scope", "read,activity:read");
   authorizeUrl.searchParams.set("state", state);
 
   return NextResponse.redirect(authorizeUrl);

@@ -18,6 +18,10 @@ export class StravaConnectionRevokedError extends Error {
 /**
  * Forgets a profile's Strava connection locally (athlete id + tokens), which
  * also frees that Strava account to be connected to a different profile.
+ * Deliberately leaves their synced activities alone: those belong to the
+ * challenges they were credited to and are deleted on a schedule after the
+ * challenge ends (see lib/strava/retention.ts), so reconnecting mid-challenge
+ * doesn't cost anyone their progress.
  * Does not call Strava - see `revokeStravaConnection` for that.
  */
 export async function clearStravaConnection(profileId: string): Promise<void> {

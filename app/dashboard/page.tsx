@@ -16,6 +16,8 @@ import { DisconnectStravaButton } from "@/components/disconnect-strava-button";
 import { DisconnectGoogleHealthButton } from "@/components/disconnect-google-health-button";
 import { SyncGoogleHealthButton } from "@/components/sync-google-health-button";
 import { AppNav } from "@/components/nav/app-nav";
+import { StravaConsentNotice } from "@/components/strava-consent-notice";
+import { ConnectWithStravaImage } from "@/components/connect-with-strava";
 
 export default async function DashboardPage({
   searchParams,
@@ -113,9 +115,15 @@ export default async function DashboardPage({
             ) : null}
 
             {tokenStatus !== "connected" ? (
-              <Button asChild className="w-full bg-[#FC4C02] text-white hover:bg-[#e04502]">
-                <a href={`/api/auth/strava?redirect_to=${encodeURIComponent("/dashboard")}`}>Connect Strava</a>
-              </Button>
+              <div className="space-y-2">
+                <StravaConsentNotice />
+                <a
+                  href={`/api/auth/strava?redirect_to=${encodeURIComponent("/dashboard")}`}
+                  className="mx-auto block w-fit"
+                >
+                  <ConnectWithStravaImage />
+                </a>
+              </div>
             ) : null}
 
             <Button asChild variant="outline" className="w-full">

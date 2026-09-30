@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { LegalPageLayout, LegalSection } from "@/components/legal-page-layout";
+import { CONTACT_EMAIL } from "@/lib/contact";
 
 export const metadata: Metadata = {
   title: "Terms of Service — PaceVelo",
 };
 
 const LAST_UPDATED = "September 22, 2026";
-const CONTACT_EMAIL = "me@khaw.cc";
 
 export default function TermsOfServicePage() {
   return (

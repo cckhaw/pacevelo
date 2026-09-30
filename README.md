@@ -51,8 +51,14 @@ This phase implements:
     activity is made private ("Only You"), and a create again if it's made
     visible.
   - `athlete` **update** with `authorized: "false"` — the athlete revoked
-    PaceVelo in Strava's settings; their stored tokens and athlete id are
-    cleared (past activities stay so finished leaderboards don't change).
+    PaceVelo in Strava's settings; their tokens and athlete id are cleared.
+    Their already-synced activities stay (so reconnecting mid-challenge costs
+    no progress) until the retention purge below deletes them. Every path
+    that ends a connection — this event, a rejected refresh token,
+    disconnecting, the stale cleanup — goes through `clearStravaConnection`.
+  - Activities Strava marks "Only You" are never stored: we request only the
+    `activity:read` scope, and still drop them for athletes who connected
+    earlier with the broader `activity:read_all` scope.
 
   Strava doesn't sign these payloads, so set `STRAVA_WEBHOOK_SUBSCRIPTION_ID`
   (below) to reject events from any other subscription.
@@ -63,11 +69,16 @@ This phase implements:
     from our own records and makes no Strava call on page view.
   - Disconnecting (self-serve or from the back office) **and deleting a user**
     revoke PaceVelo on Strava's side too (`lib/strava/connection.ts`).
-  - `/api/cron/cleanup-strava` (daily, `vercel.json`) revokes athletes whose
-    latest challenge ended more than `STRAVA_STALE_AFTER_DAYS` days ago
-    (default 7), or who never joined one. It **requires `CRON_SECRET`** and
-    supports `?dryRun=1` to preview who would be revoked. A failed Strava call
-    leaves the connection in place for the next run to retry.
+  - `/api/cron/cleanup-strava` (daily, `vercel.json`) does two things. It
+    **deletes synced Strava activities** once `STRAVA_DATA_RETENTION_DAYS`
+    days (default 30) have passed since the last challenge crediting them
+    ended (`lib/strava/retention.ts`; the privacy policy and consent notice
+    read the same setting). And it **revokes athletes** whose latest challenge
+    ended more than `STRAVA_STALE_AFTER_DAYS` days ago (default 7), or who
+    never joined one. It **requires `CRON_SECRET`**. `?dryRun=1` previews both
+    without changing anything (`&days=N` / `&retentionDays=N` try other
+    values). A failed Strava call leaves the connection in place for the next
+    run to retry.
 - **Public leaderboard** (`/company/[slug]`): individual standings and a
   departmental battle, ranked by whichever metric the active challenge
   uses (distance/time/elevation), with an activity-type filter. "Live"
