@@ -85,14 +85,9 @@ export function ParticipantBreakdownDialog({
           <>
             <DialogHeader className="shrink-0">
               <div className="flex items-center gap-3">
-                {data.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- Strava-hosted avatar URL
-                  <img src={data.avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
-                ) : (
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium">
-                    {initialsOf(data.fullName)}
-                  </span>
-                )}
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-medium">
+                  {initialsOf(data.fullName)}
+                </span>
                 <div className="min-w-0">
                   <DialogTitle className="truncate">{data.fullName}</DialogTitle>
                   {data.department ? <p className="text-xs text-muted-foreground">{data.department}</p> : null}

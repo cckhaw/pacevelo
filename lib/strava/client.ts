@@ -8,7 +8,6 @@ export interface StravaAthlete {
   id: number;
   firstname: string | null;
   lastname: string | null;
-  profile: string | null;
 }
 
 interface StravaTokenResponse {

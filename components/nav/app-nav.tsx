@@ -56,6 +56,9 @@ function menuLinksFor(variant: NavVariant, hasCompany: boolean): NavLinkItem[] {
       { href: "/admin/account", label: "Account", icon: UserRound },
     ];
   }
+  if (variant === "employee") {
+    return [{ href: "/dashboard/account", label: "My account", icon: UserRound }];
+  }
   return [];
 }
 
