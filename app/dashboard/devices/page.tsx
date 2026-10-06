@@ -126,7 +126,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
             <CardDescription>
               {shortcutInstallUrl
                 ? shortcutAutomationInstallUrl
-                  ? "Three taps, then it syncs automatically every night."
+                  ? "Three taps, then it syncs automatically whenever you open WhatsApp."
                   : "Two taps, then it reports automatically."
                 : "A few minutes, once. No app install required."}
             </CardDescription>
@@ -168,7 +168,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
                     <li>
                       <Button asChild size="sm" variant="outline">
                         <a href={shortcutAutomationInstallUrl}>
-                          <Clock className="h-3.5 w-3.5" /> Turn on daily automatic sync
+                          <Clock className="h-3.5 w-3.5" /> Turn on automatic sync
                         </a>
                       </Button>
                       <p className="mt-1 text-xs text-muted-foreground">
@@ -176,7 +176,8 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
                         <strong>&quot;Automation is turned off&quot;</strong> banner at the top to switch it on.
                         Apple always adds a shared automation switched off as a safety default, so this one extra tap
                         is unavoidable - but only needed once per phone. Once it&apos;s on, it silently runs the
-                        shortcut every night at 11:55 PM so you never have to open the app.
+                        shortcut every time you open WhatsApp or WhatsApp Business, so your steps update whenever
+                        you use your phone - no need to open the Shortcuts app.
                       </p>
                     </li>
                   ) : null}
@@ -358,12 +359,14 @@ function ShortcutManualSteps({ syncUrl, personalizeUrl }: { syncUrl: string; per
       </li>
       <li>
         To run it automatically: <strong>Automation</strong> tab → <strong>+</strong> →{" "}
-        <strong>Create Personal Automation</strong> → <strong>Time of Day</strong> (e.g. 11:55 PM, repeat daily) →{" "}
+        <strong>Create Personal Automation</strong> → <strong>App</strong> → choose <strong>WhatsApp</strong> (and{" "}
+        <strong>WhatsApp Business</strong>, if you use it) with <strong>Is Opened</strong> →{" "}
         <strong>Run Shortcut</strong> → pick the one you just made.
       </li>
       <li>
         In that automation&apos;s settings, turn off <strong>Ask Before Running</strong> so it reports silently in
-        the background.
+        the background. (An app-opened automation runs while the phone is unlocked, unlike a time-based one, which
+        iOS skips when the phone is locked.)
       </li>
     </ol>
   );
