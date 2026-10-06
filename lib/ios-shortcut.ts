@@ -22,8 +22,8 @@ export function iosShortcutInstallUrl(): string | null {
 }
 
 /**
- * iCloud link for the pre-built Personal Automation (Time of Day 11:55 PM ->
- * Run Shortcut "Report Steps to PaceVelo" -> Ask Before Running off) - like
+ * iCloud link for the pre-built Personal Automation (App: WhatsApp / WhatsApp
+ * Business Is Opened -> Run Shortcut "Report Steps to PaceVelo" -> Ask Before Running off) - like
  * the shortcut itself, an Automation can be shared via iCloud link (long-
  * press it in the Automation tab -> Share -> Copy iCloud Link), and opening
  * that link offers to add the whole automation as configured. This lets step
