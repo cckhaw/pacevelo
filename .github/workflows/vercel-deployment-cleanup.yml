@@ -1,0 +1,192 @@
+name: Clean up Vercel deployments
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_cleanup:
+        description: Delete every deployment except the latest ready production deployment
+        required: true
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: vercel-deployment-cleanup-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      CONFIRM_CLEANUP: ${{ inputs.confirm_cleanup }}
+    steps:
+      - name: Retain the latest production deployment
+        shell: bash
+        run: |
+          node <<'NODE'
+          const apiBase = "https://api.vercel.com";
+          const token = process.env.VERCEL_TOKEN;
+          const orgId = process.env.VERCEL_ORG_ID;
+          const teamId = process.env.VERCEL_TEAM_ID;
+          const projectId = process.env.VERCEL_PROJECT_ID;
+
+          if (process.env.CONFIRM_CLEANUP !== "true") {
+            throw new Error("Cleanup was not confirmed. Re-run the workflow with confirm_cleanup enabled.");
+          }
+          for (const [name, value] of Object.entries({
+            VERCEL_TOKEN: token,
+            VERCEL_ORG_ID: orgId,
+            VERCEL_TEAM_ID: teamId,
+            VERCEL_PROJECT_ID: projectId,
+          })) {
+            if (!value) throw new Error(`Missing required Actions secret or variable: ${name}`);
+          }
+
+          async function request(path, params = {}, method = "GET") {
+            const url = new URL(path, apiBase);
+            for (const [key, value] of Object.entries(params)) {
+              if (value !== undefined) url.searchParams.set(key, String(value));
+            }
+            const response = await fetch(url, {
+              method,
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const text = await response.text();
+            let body;
+            try {
+              body = text ? JSON.parse(text) : {};
+            } catch {
+              body = {};
+            }
+            if (!response.ok) {
+              const detail = body.error?.message || text || response.statusText;
+              throw new Error(`Vercel API ${method} ${url.pathname} failed (${response.status}): ${detail}`);
+            }
+            return body;
+          }
+
+          function deploymentId(deployment) {
+            return deployment.uid || deployment.id;
+          }
+
+          function timestamp(value) {
+            const parsed =
+              typeof value === "number"
+                ? value
+                : /^\d+$/.test(value)
+                  ? Number(value)
+                  : Date.parse(value);
+            if (!Number.isFinite(parsed)) throw new Error("Vercel returned a deployment with an invalid createdAt value.");
+            return parsed;
+          }
+
+          const project = await request(
+            `/v9/projects/${encodeURIComponent(projectId)}`,
+            { teamId },
+          );
+          if (project.id !== projectId) {
+            throw new Error(`Project verification failed: expected ${projectId}, received ${project.id || "no project id"}.`);
+          }
+          if (![orgId, teamId].includes(project.accountId)) {
+            throw new Error(
+              `Project account verification failed: project account ${project.accountId || "unknown"} ` +
+              `does not match VERCEL_ORG_ID or VERCEL_TEAM_ID.`,
+            );
+          }
+
+          const deployments = [];
+          const seen = new Set();
+          let until;
+          for (;;) {
+            const page = await request("/v7/deployments", {
+              projectId,
+              teamId,
+              limit: 100,
+              until,
+            });
+            if (!Array.isArray(page.deployments)) {
+              throw new Error("Vercel returned an invalid deployments response; no deployments will be deleted.");
+            }
+            let added = 0;
+            for (const deployment of page.deployments) {
+              const id = deploymentId(deployment);
+              if (!id || seen.has(id)) continue;
+              seen.add(id);
+              deployments.push(deployment);
+              added++;
+            }
+            if (page.deployments.length < 100) break;
+            if (added === 0) {
+              throw new Error("Deployment pagination made no progress; refusing to delete anything.");
+            }
+            const nextCursor = page.pagination?.next;
+            const next = Number(nextCursor);
+            if (
+              nextCursor === undefined ||
+              nextCursor === null ||
+              !Number.isFinite(next) ||
+              String(next) === String(until)
+            ) {
+              throw new Error("Vercel did not provide a usable next-page cursor; refusing to delete anything.");
+            }
+            until = next;
+          }
+
+          const validStates = new Set([
+            "BUILDING",
+            "BLOCKED",
+            "CANCELED",
+            "ERROR",
+            "INITIALIZING",
+            "QUEUED",
+            "READY",
+          ]);
+          for (const deployment of deployments) {
+            const id = deploymentId(deployment);
+            if (
+              deployment.projectId !== projectId ||
+              !["production", "preview"].includes(deployment.target) ||
+              !validStates.has(deployment.state) ||
+              !validStates.has(deployment.readyState)
+            ) {
+              throw new Error(
+                `Deployment ${id || "(unknown id)"} failed project, target, or status verification; refusing to delete anything.`,
+              );
+            }
+          }
+          const keeper = deployments
+            .filter(
+              (deployment) =>
+                deployment.target === "production" &&
+                deployment.state === "READY" &&
+                deployment.readyState === "READY",
+            )
+            .sort((a, b) => timestamp(b.createdAt) - timestamp(a.createdAt))[0];
+          const keeperId = keeper && deploymentId(keeper);
+          if (!keeperId) {
+            throw new Error(`Could not identify a ready production deployment for project ${projectId}; no deployments will be deleted.`);
+          }
+          if (!deployments.some((deployment) => deploymentId(deployment) === keeperId)) {
+            throw new Error("The verified latest production deployment was not present in the full deployment list; refusing to delete anything.");
+          }
+
+          const toDelete = deployments.filter((deployment) => deploymentId(deployment) !== keeperId);
+          console.log(`Verified project ${projectId}; keeping latest ready production deployment ${keeperId}.`);
+          console.log(`Deleting ${toDelete.length} other deployment(s) from a total of ${deployments.length}.`);
+          for (const deployment of toDelete) {
+            const id = deploymentId(deployment);
+            await request(
+              `/v13/deployments/${encodeURIComponent(id)}`,
+              { teamId },
+              "DELETE",
+            );
+            console.log(`Deleted ${id} (${deployment.target}, ${deployment.readyState}).`);
+          }
+          console.log("Deployment cleanup completed.");
+          NODE
