@@ -8,6 +8,10 @@ on:
         required: true
         type: boolean
         default: false
+      inspect_deployment_id:
+        description: Optional read-only inspection of a deployment ID; skips all deletions
+        required: false
+        type: string
 
 permissions: {}
 
@@ -25,6 +29,7 @@ jobs:
       VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       CONFIRM_CLEANUP: ${{ inputs.confirm_cleanup }}
+      INSPECT_DEPLOYMENT_ID: ${{ inputs.inspect_deployment_id }}
     steps:
       - name: Retain the latest production deployment
         shell: bash
@@ -36,7 +41,8 @@ jobs:
           const teamId = process.env.VERCEL_TEAM_ID;
           const projectId = process.env.VERCEL_PROJECT_ID;
 
-          if (process.env.CONFIRM_CLEANUP !== "true") {
+          const inspectDeploymentId = process.env.INSPECT_DEPLOYMENT_ID;
+          if (process.env.CONFIRM_CLEANUP !== "true" && !inspectDeploymentId) {
             throw new Error("Cleanup was not confirmed. Re-run the workflow with confirm_cleanup enabled.");
           }
           for (const [name, value] of Object.entries({
@@ -98,6 +104,26 @@ jobs:
               `Project account verification failed: project account ${project.accountId || "unknown"} ` +
               `does not match VERCEL_ORG_ID or VERCEL_TEAM_ID.`,
             );
+          }
+
+          if (inspectDeploymentId) {
+            const deployment = await request(
+              `/v13/deployments/${encodeURIComponent(inspectDeploymentId)}`,
+              { teamId },
+            );
+            console.log(
+              "Read-only deployment inspection:",
+              JSON.stringify({
+                fields: Object.keys(deployment).sort(),
+                projectMatches: deployment.projectId === projectId,
+                target: deployment.target ?? null,
+                state: deployment.state ?? null,
+                readyState: deployment.readyState ?? null,
+                createdAtType: typeof deployment.createdAt,
+                createdAtValid: Number.isFinite(timestamp(deployment.createdAt)),
+              }),
+            );
+            process.exit(0);
           }
 
           const deployments = [];
