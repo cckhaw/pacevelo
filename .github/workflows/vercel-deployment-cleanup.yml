@@ -107,17 +107,39 @@ jobs:
           }
 
           if (inspectDeploymentId) {
-            const deployment = await request(
-              `/v13/deployments/${encodeURIComponent(inspectDeploymentId)}`,
-              { teamId },
-            );
+            let deployment;
+            let until;
+            for (;;) {
+              const page = await request("/v7/deployments", {
+                projectId,
+                teamId,
+                limit: 100,
+                until,
+              });
+              if (!Array.isArray(page.deployments)) {
+                throw new Error("Vercel returned an invalid deployments response during read-only inspection.");
+              }
+              deployment = page.deployments.find(
+                (candidate) => deploymentId(candidate) === inspectDeploymentId,
+              );
+              if (deployment || page.deployments.length < 100) break;
+              const next = page.pagination?.next;
+              if (next === undefined || next === null || !Number.isFinite(Number(next))) {
+                throw new Error("Vercel did not provide a usable next-page cursor during read-only inspection.");
+              }
+              until = Number(next);
+            }
+            if (!deployment) {
+              throw new Error("The requested deployment was not found in the configured project.");
+            }
             console.log(
-              "Read-only deployment inspection:",
+              "Read-only deployment-list inspection:",
               JSON.stringify({
                 fields: Object.keys(deployment).sort(),
                 projectMatches: deployment.projectId === projectId,
                 target: deployment.target ?? null,
                 state: deployment.state ?? null,
+                status: deployment.status ?? null,
                 readyState: deployment.readyState ?? null,
                 createdAtType: typeof deployment.createdAt,
                 createdAtValid: Number.isFinite(timestamp(deployment.createdAt)),
