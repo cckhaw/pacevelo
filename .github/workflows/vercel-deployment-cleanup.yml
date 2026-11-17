@@ -186,6 +186,7 @@ jobs:
             until = next;
           }
 
+          const validTargets = new Set(["production", "staging", null]); // Vercel uses null for preview deployments.
           const validStates = new Set([
             "BUILDING",
             "BLOCKED",
@@ -199,7 +200,7 @@ jobs:
             const id = deploymentId(deployment);
             if (
               deployment.projectId !== projectId ||
-              !["production", "preview"].includes(deployment.target) ||
+              !validTargets.has(deployment.target) ||
               !validStates.has(deployment.state) ||
               !validStates.has(deployment.readyState)
             ) {
