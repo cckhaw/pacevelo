@@ -55,7 +55,7 @@ jobs:
       - name: Apply database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npm run db:migrate
+        run: npm run db:migrate:ci
 
       - name: Pull Vercel production settings
         run: npx --yes vercel@${VERCEL_CLI_VERSION} pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
