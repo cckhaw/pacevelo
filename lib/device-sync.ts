@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { challengeParticipants, challenges, profiles, stepEntries } from "@/db/schema";
-import { encryptSecret, decryptSecret, hashLookupToken } from "@/lib/token-crypto";
+import { encryptSecret, decryptSecret, hashLookupToken, isReadableSecret } from "@/lib/token-crypto";
 import { isStepsDataSource } from "@/lib/validations";
 
 function randomToken(): string {
@@ -19,13 +19,20 @@ async function storeToken(profileId: string, token: string): Promise<void> {
     .where(eq(profiles.id, profileId));
 }
 
-/** Returns the signed-in profile's device sync token, generating one on first use. */
-export async function getOrCreateDeviceSyncToken(profileId: string): Promise<string> {
+/**
+ * Returns the signed-in profile's device sync token, generating one on first
+ * use. Returns null when a token exists but can't be decrypted (the
+ * encryption key was lost or changed) - the caller should offer to issue a
+ * new one. Phones already configured with the old token keep working until
+ * then, since requests are checked against the stored hash, not the ciphertext.
+ */
+export async function getOrCreateDeviceSyncToken(profileId: string): Promise<string | null> {
   const existing = await db.query.profiles.findFirst({
     where: eq(profiles.id, profileId),
     columns: { deviceSyncToken: true, deviceSyncTokenHash: true },
   });
   if (existing?.deviceSyncToken) {
+    if (!isReadableSecret(existing.deviceSyncToken)) return null;
     const token = decryptSecret(existing.deviceSyncToken);
     // Upgrade legacy rows (plaintext, no hash) in place.
     if (!existing.deviceSyncTokenHash || token === existing.deviceSyncToken) {
