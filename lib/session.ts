@@ -2,8 +2,9 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { loginEvents } from "@/db/schema";
+import { loginEvents, profiles } from "@/db/schema";
 import type { ProfileRole } from "@/db/schema";
 import { sessionSecretKey } from "@/lib/session-secret";
 
@@ -16,8 +17,12 @@ export interface SessionPayload {
 }
 
 /** Signs a JWT for `payload`, sets it as an httpOnly session cookie, and records a login event for visit-frequency stats. */
-export async function createSession(payload: SessionPayload) {
-  const token = await new SignJWT({ role: payload.role })
+export async function createSession(payload: SessionPayload, options: { recordLogin?: boolean } = {}) {
+  const current = await db.query.profiles.findFirst({
+    where: eq(profiles.id, payload.userId),
+    columns: { sessionVersion: true },
+  });
+  const token = await new SignJWT({ role: payload.role, sv: current?.sessionVersion ?? 0 })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.userId)
     .setIssuedAt()
@@ -32,6 +37,8 @@ export async function createSession(payload: SessionPayload) {
     maxAge: SESSION_DURATION_SECONDS,
     path: "/",
   });
+
+  if (options.recordLogin === false) return;
 
   try {
     await db.insert(loginEvents).values({ profileId: payload.userId, role: payload.role });
@@ -51,6 +58,16 @@ export async function getSession(): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, sessionSecretKey());
     if (typeof payload.sub !== "string" || typeof payload.role !== "string") return null;
+    if (typeof payload.sv !== "number") return null;
+
+    // Server-side check so a password change/reset or a deleted account
+    // invalidates every session minted before it.
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, payload.sub),
+      columns: { sessionVersion: true },
+    });
+    if (!profile || profile.sessionVersion !== payload.sv) return null;
+
     return { userId: payload.sub, role: payload.role as ProfileRole };
   } catch {
     return null;

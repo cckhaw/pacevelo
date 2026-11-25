@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { requireBackoffice } from "@/lib/auth";
@@ -91,7 +91,10 @@ export async function resetUserPassword(
   }
 
   const passwordHash = await hashPassword(parsed.data);
-  await db.update(profiles).set({ passwordHash }).where(eq(profiles.id, profileId));
+  await db
+    .update(profiles)
+    .set({ passwordHash, sessionVersion: sql`${profiles.sessionVersion} + 1` })
+    .where(eq(profiles.id, profileId));
 
   return { success: true };
 }

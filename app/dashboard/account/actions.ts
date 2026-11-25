@@ -1,9 +1,10 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { getCurrentProfile } from "@/lib/auth";
+import { createSession } from "@/lib/session";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { emailSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 import { createEmailVerification, verifyEmailOtp } from "@/lib/otp";
@@ -49,8 +50,9 @@ export async function changeMyPassword(
 
   await db
     .update(profiles)
-    .set({ passwordHash: await hashPassword(parsedNew.data) })
+    .set({ passwordHash: await hashPassword(parsedNew.data), sessionVersion: sql`${profiles.sessionVersion} + 1` })
     .where(eq(profiles.id, profile.id));
+  await createSession({ userId: profile.id, role: profile.role }, { recordLogin: false });
 
   return { success: "Password updated." };
 }

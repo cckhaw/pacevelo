@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { exchangeStravaCode } from "@/lib/strava/client";
 import { decodeStravaState } from "@/lib/strava/state";
-import { createSession } from "@/lib/session";
+import { encryptSecret } from "@/lib/token-crypto";
+import { createSession, getSession } from "@/lib/session";
+import { resolveSafeRedirect } from "@/lib/safe-redirect";
 import { checkEmployeeLimit } from "@/lib/company-limits";
 import { placeholderEmailForStrava } from "@/lib/profile-email";
 import { db } from "@/db";
@@ -46,6 +48,17 @@ export async function GET(request: NextRequest) {
     return errorRedirect(appUrl, "invalid_oauth_state");
   }
 
+  // The state only proves *someone* started the flow. If it was started
+  // while signed in, the same browser must still hold that session -
+  // otherwise a victim could be tricked into finishing an attacker's flow and
+  // have their provider tokens attached to the attacker's profile.
+  if (state.existingUserId) {
+    const session = await getSession();
+    if (!session || session.userId !== state.existingUserId) {
+      return errorRedirect(appUrl, "invalid_oauth_state");
+    }
+  }
+
   let exchange;
   try {
     exchange = await exchangeStravaCode(code);
@@ -57,8 +70,8 @@ export async function GET(request: NextRequest) {
   const { athlete, access_token, refresh_token, expires_at } = exchange;
   const tokenFields = {
     stravaAthleteId: athlete.id,
-    stravaAccessToken: access_token,
-    stravaRefreshToken: refresh_token,
+    stravaAccessToken: encryptSecret(access_token),
+    stravaRefreshToken: encryptSecret(refresh_token),
     stravaTokenExpiresAt: new Date(expires_at * 1000),
   };
   const fullName = [athlete.firstname, athlete.lastname].filter(Boolean).join(" ") || "PaceVelo Athlete";
@@ -157,7 +170,7 @@ export async function GET(request: NextRequest) {
     await createSession({ userId: targetUserId, role: targetRole });
   }
 
-  const destination = new URL(state.redirectTo ?? "/dashboard", appUrl);
+  const destination = resolveSafeRedirect(state.redirectTo, appUrl);
   if (isNewUser) {
     destination.searchParams.set("welcome", "1");
   }

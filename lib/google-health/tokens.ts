@@ -1,3 +1,4 @@
+import { encryptSecret, decryptSecret } from "@/lib/token-crypto";
 import "server-only";
 
 import { eq } from "drizzle-orm";
@@ -33,15 +34,15 @@ export async function getValidGoogleHealthAccessToken(profileId: string): Promis
   const expiresAtMs = profile.googleHealthTokenExpiresAt ? profile.googleHealthTokenExpiresAt.getTime() : 0;
 
   if (expiresAtMs - Date.now() > EXPIRY_BUFFER_MS) {
-    return profile.googleHealthAccessToken;
+    return decryptSecret(profile.googleHealthAccessToken);
   }
 
-  const refreshed = await refreshGoogleHealthToken(profile.googleHealthRefreshToken);
+  const refreshed = await refreshGoogleHealthToken(decryptSecret(profile.googleHealthRefreshToken));
 
   await db
     .update(profiles)
     .set({
-      googleHealthAccessToken: refreshed.accessToken,
+      googleHealthAccessToken: encryptSecret(refreshed.accessToken),
       googleHealthTokenExpiresAt: refreshed.expiresAt,
     })
     .where(eq(profiles.id, profileId));

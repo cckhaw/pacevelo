@@ -1,3 +1,4 @@
+import { secureEqual } from "@/lib/secure-compare";
 import { NextResponse, type NextRequest } from "next/server";
 import { dataRetentionDays, staleAfterDays } from "@/lib/strava/config";
 import { revokeStravaConnection } from "@/lib/strava/connection";
@@ -32,7 +33,7 @@ function positiveParam(request: NextRequest, name: string): number | null {
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret || !secureEqual(request.headers.get("authorization") ?? "", `Bearer ${secret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

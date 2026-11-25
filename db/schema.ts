@@ -81,7 +81,14 @@ export const profiles = pgTable("profiles", {
   // the sideloaded Android companion app report daily step counts without an
   // interactive OAuth flow. Generated on demand from the dashboard (see
   // lib/device-sync.ts), null until then.
+  // Stored AES-GCM encrypted (lib/token-crypto.ts) so the dashboard can still
+  // re-display the QR code; legacy rows may still hold the plaintext token.
   deviceSyncToken: text("device_sync_token").unique(),
+  // SHA-256 of the plaintext token - what bearer requests are looked up by.
+  deviceSyncTokenHash: text("device_sync_token_hash").unique(),
+  // Bumped on every password change/reset (and any forced sign-out); baked
+  // into each session JWT so older sessions stop validating.
+  sessionVersion: integer("session_version").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [uniqueIndex("profiles_email_idx").on(table.email)]);
 
@@ -229,6 +236,14 @@ export const stepEntries = pgTable(
   },
   (table) => [uniqueIndex("step_entries_profile_day_idx").on(table.profileId, table.day)],
 );
+
+// 11. Fixed-window counters backing lib/rate-limit.ts (login throttling,
+// OTP/reset email limits, lockouts). Keyed by "<scope>:<ip-or-account>".
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  windowStart: timestamp("window_start", { withTimezone: true }).defaultNow().notNull(),
+});
 
 export const stepEntriesRelations = relations(stepEntries, ({ one }) => ({
   profile: one(profiles, { fields: [stepEntries.profileId], references: [profiles.id] }),

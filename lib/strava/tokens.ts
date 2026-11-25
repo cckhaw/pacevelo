@@ -3,6 +3,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
+import { encryptSecret, decryptSecret } from "@/lib/token-crypto";
 import { StravaApiError, refreshStravaToken } from "@/lib/strava/client";
 
 const EXPIRY_BUFFER_MS = 60_000;
@@ -75,12 +76,12 @@ export async function getValidStravaAccessToken(profileId: string): Promise<stri
   const expiresAtMs = profile.stravaTokenExpiresAt ? profile.stravaTokenExpiresAt.getTime() : 0;
 
   if (expiresAtMs - Date.now() > EXPIRY_BUFFER_MS) {
-    return profile.stravaAccessToken;
+    return decryptSecret(profile.stravaAccessToken);
   }
 
   let refreshed;
   try {
-    refreshed = await refreshStravaToken(profile.stravaRefreshToken);
+    refreshed = await refreshStravaToken(decryptSecret(profile.stravaRefreshToken));
   } catch (err) {
     if (isRefreshTokenRejected(err)) {
       await clearStravaConnection(profileId);
@@ -92,8 +93,8 @@ export async function getValidStravaAccessToken(profileId: string): Promise<stri
   await db
     .update(profiles)
     .set({
-      stravaAccessToken: refreshed.access_token,
-      stravaRefreshToken: refreshed.refresh_token,
+      stravaAccessToken: encryptSecret(refreshed.access_token),
+      stravaRefreshToken: encryptSecret(refreshed.refresh_token),
       stravaTokenExpiresAt: new Date(refreshed.expires_at * 1000),
     })
     .where(eq(profiles.id, profileId));

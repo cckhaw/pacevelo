@@ -1,6 +1,22 @@
 name: Clean up Vercel deployments
 
 on:
+  # Called by deploy-production.yml once the new production deployment is live.
+  workflow_call:
+    inputs:
+      confirm_cleanup:
+        description: Delete every deployment except the latest ready production deployment
+        required: true
+        type: boolean
+    secrets:
+      VERCEL_TOKEN:
+        required: true
+      VERCEL_ORG_ID:
+        required: true
+      VERCEL_TEAM_ID:
+        required: true
+      VERCEL_PROJECT_ID:
+        required: true
   workflow_dispatch:
     inputs:
       confirm_cleanup:

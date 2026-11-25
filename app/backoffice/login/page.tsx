@@ -32,6 +32,18 @@ export default function BackofficeLoginPage() {
               <Label htmlFor="password">Password</Label>
               <PasswordInput id="password" name="password" required autoComplete="current-password" />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="totp">Authentication code</Label>
+              <Input
+                id="totp"
+                name="totp"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                autoComplete="one-time-code"
+                placeholder="6-digit code (if enabled)"
+              />
+            </div>
             {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
             <SubmitButton className="w-full" size="lg">
               Sign in

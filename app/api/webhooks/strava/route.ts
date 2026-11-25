@@ -4,6 +4,7 @@ import {
   processActivityDeleted,
   processAthleteDeauthorized,
 } from "@/lib/strava/webhook-processing";
+import { secureEqual } from "@/lib/secure-compare";
 
 /**
  * Strava calls this with a GET request once, right after we create a push
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   const challenge = params.get("hub.challenge");
   const expectedToken = process.env.STRAVA_WEBHOOK_VERIFY_TOKEN;
 
-  if (mode === "subscribe" && challenge && expectedToken && token === expectedToken) {
+  if (mode === "subscribe" && challenge && expectedToken && token && secureEqual(token, expectedToken)) {
     return NextResponse.json({ "hub.challenge": challenge });
   }
 
@@ -57,9 +58,14 @@ export async function POST(request: NextRequest) {
 
   // Strava doesn't sign event payloads, so the subscription id (issued once
   // when the subscription is created) is the only thing tying an event to
-  // ours. Optional so existing deployments keep working until it's set.
+  // ours - so it is required: without it anyone could POST forged events
+  // (e.g. fake deauthorizations, or API-quota-burning re-fetches).
   const expectedSubscriptionId = process.env.STRAVA_WEBHOOK_SUBSCRIPTION_ID;
-  if (expectedSubscriptionId && String(event.subscription_id) !== expectedSubscriptionId) {
+  if (!expectedSubscriptionId) {
+    console.error("STRAVA_WEBHOOK_SUBSCRIPTION_ID is not set - rejecting webhook event");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+  }
+  if (String(event.subscription_id) !== expectedSubscriptionId) {
     return NextResponse.json({ error: "Unknown subscription" }, { status: 403 });
   }
 
