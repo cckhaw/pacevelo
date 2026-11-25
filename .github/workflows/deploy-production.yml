@@ -57,17 +57,14 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run db:migrate:ci
 
-      - name: Pull Vercel production settings
-        run: npx --yes vercel@${VERCEL_CLI_VERSION} pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
-
-      - name: Build (production)
-        run: npx --yes vercel@${VERCEL_CLI_VERSION} build --prod --token="${{ secrets.VERCEL_TOKEN }}"
-
-      # `vercel deploy` blocks until the deployment is READY (live).
+      # Vercel builds the project itself (not `--prebuilt`), so the build sees
+      # every Production environment variable - including ones marked
+      # Sensitive, which `vercel pull` never downloads. The CLI waits until
+      # the deployment is READY (live) before returning.
       - name: Deploy to production
         id: deploy
         run: |
-          url=$(npx --yes vercel@${VERCEL_CLI_VERSION} deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}")
+          url=$(npx --yes vercel@${VERCEL_CLI_VERSION} deploy --prod --yes --token="${{ secrets.VERCEL_TOKEN }}")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed $url" >> "$GITHUB_STEP_SUMMARY"
 
