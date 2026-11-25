@@ -1,3 +1,4 @@
+import { isReadableSecret } from "@/lib/token-crypto";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -52,7 +53,9 @@ export default async function DashboardPage({
   // revocations arrive by webhook (or surface when a token refresh is
   // rejected) and clear the stored connection, so this stays accurate.
   const tokenStatus: "connected" | "error" =
-    profile.stravaAthleteId && profile.stravaRefreshToken ? "connected" : "error";
+    profile.stravaAthleteId && profile.stravaRefreshToken && isReadableSecret(profile.stravaRefreshToken)
+      ? "connected"
+      : "error";
 
   let googleHealthStatus: "connected" | "error" = "error";
   if (profile.googleHealthUserId) {

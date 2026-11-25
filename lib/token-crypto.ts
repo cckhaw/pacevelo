@@ -46,6 +46,20 @@ export function decryptSecret(stored: string): string {
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
 
+/**
+ * True when `stored` can be turned back into plaintext: legacy plaintext, or
+ * ciphertext that decrypts with the current TOKEN_ENCRYPTION_KEY. False when
+ * the key was lost/changed/unset or the value is corrupt. Never throws.
+ */
+export function isReadableSecret(stored: string): boolean {
+  try {
+    decryptSecret(stored);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Deterministic lookup hash for high-entropy bearer tokens (not for passwords). */
 export function hashLookupToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");

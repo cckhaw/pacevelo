@@ -48,6 +48,34 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
   if (!profile) redirect("/login");
 
   const token = await getOrCreateDeviceSyncToken(profile.id);
+  if (!token) {
+    // The stored token can't be decrypted (encryption key lost or changed), so
+    // it can't be shown again. Offer a fresh one instead of failing the page.
+    return (
+      <div className="min-h-screen bg-secondary">
+        <AppNav variant="employee" fullName={profile.fullName} brandHref="/dashboard" signOutAction={signOut} />
+        <div className="mx-auto max-w-xl px-4 py-10">
+          <Link href="/dashboard" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
+          </Link>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <TriangleAlert className="h-4 w-4" /> Your setup link needs to be reissued
+              </CardTitle>
+              <CardDescription>
+                We can no longer display your personal setup link. A phone that is already set up may keep
+                reporting, but to see the link and QR code again, get a new one and set it up on your phone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RegenerateDeviceTokenButton />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
   const latestSync = await getLatestStepSync(profile.id);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const syncUrl = `${appUrl}/api/devices/steps?token=${token}`;
