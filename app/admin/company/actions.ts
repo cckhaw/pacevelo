@@ -115,7 +115,7 @@ export async function saveCompany(
 
   if (hasLogo) {
     try {
-      const blob = await put(`company-logos/${companyId}-${Date.now()}.${sniffedLogo!.extension}`, logoBytes!, {
+      const blob = await put(`company-logos/${companyId}-${Date.now()}.${sniffedLogo!.extension}`, Buffer.from(logoBytes!), {
         access: "public",
         contentType: sniffedLogo!.contentType,
         addRandomSuffix: true,

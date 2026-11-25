@@ -4,51 +4,67 @@ import { randomBytes } from "crypto";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { challengeParticipants, challenges, profiles, stepEntries } from "@/db/schema";
+import { encryptSecret, decryptSecret, hashLookupToken } from "@/lib/token-crypto";
 import { isStepsDataSource } from "@/lib/validations";
 
 function randomToken(): string {
   return `pv_${randomBytes(24).toString("hex")}`;
 }
 
-async function generateUniqueToken(): Promise<string> {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const token = randomToken();
-    const collision = await db.query.profiles.findFirst({
-      where: eq(profiles.deviceSyncToken, token),
-      columns: { id: true },
-    });
-    if (!collision) return token;
-  }
-  throw new Error("Could not generate a unique device sync token, please try again.");
+/** Persists a freshly generated token: encrypted for re-display, hashed for lookup. */
+async function storeToken(profileId: string, token: string): Promise<void> {
+  await db
+    .update(profiles)
+    .set({ deviceSyncToken: encryptSecret(token), deviceSyncTokenHash: hashLookupToken(token) })
+    .where(eq(profiles.id, profileId));
 }
 
 /** Returns the signed-in profile's device sync token, generating one on first use. */
 export async function getOrCreateDeviceSyncToken(profileId: string): Promise<string> {
   const existing = await db.query.profiles.findFirst({
     where: eq(profiles.id, profileId),
-    columns: { deviceSyncToken: true },
+    columns: { deviceSyncToken: true, deviceSyncTokenHash: true },
   });
-  if (existing?.deviceSyncToken) return existing.deviceSyncToken;
+  if (existing?.deviceSyncToken) {
+    const token = decryptSecret(existing.deviceSyncToken);
+    // Upgrade legacy rows (plaintext, no hash) in place.
+    if (!existing.deviceSyncTokenHash || token === existing.deviceSyncToken) {
+      await storeToken(profileId, token);
+    }
+    return token;
+  }
 
-  const token = await generateUniqueToken();
-  await db.update(profiles).set({ deviceSyncToken: token }).where(eq(profiles.id, profileId));
+  // 192 bits of randomness - collisions aren't a practical concern, and the
+  // unique index on the hash would reject one anyway.
+  const token = randomToken();
+  await storeToken(profileId, token);
   return token;
 }
 
 /** Replaces the signed-in profile's token - any Shortcut/app still configured with the old one stops working immediately. */
 export async function regenerateDeviceSyncToken(profileId: string): Promise<string> {
-  const token = await generateUniqueToken();
-  await db.update(profiles).set({ deviceSyncToken: token }).where(eq(profiles.id, profileId));
+  const token = randomToken();
+  await storeToken(profileId, token);
   return token;
 }
 
 /** Looks up which profile a device-sync bearer token belongs to - null if the token is unset/invalid. */
 export async function getProfileIdByDeviceSyncToken(token: string): Promise<string | null> {
-  const profile = await db.query.profiles.findFirst({
+  const byHash = await db.query.profiles.findFirst({
+    where: eq(profiles.deviceSyncTokenHash, hashLookupToken(token)),
+    columns: { id: true },
+  });
+  if (byHash) return byHash.id;
+
+  // Legacy rows created before hashing: still stored as plaintext. Match,
+  // then upgrade so the next request takes the hashed path.
+  const legacy = await db.query.profiles.findFirst({
     where: eq(profiles.deviceSyncToken, token),
     columns: { id: true },
   });
-  return profile?.id ?? null;
+  if (!legacy) return null;
+  await storeToken(legacy.id, token);
+  return legacy.id;
 }
 
 /**

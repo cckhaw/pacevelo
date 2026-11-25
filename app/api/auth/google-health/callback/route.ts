@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { exchangeGoogleHealthCode } from "@/lib/google-health/client";
 import { decodeGoogleHealthState } from "@/lib/google-health/state";
+import { encryptSecret } from "@/lib/token-crypto";
 import { createSession, getSession } from "@/lib/session";
 import { resolveSafeRedirect } from "@/lib/safe-redirect";
 import { checkEmployeeLimit } from "@/lib/company-limits";
@@ -69,8 +70,8 @@ export async function GET(request: NextRequest) {
   const { googleUserId, accessToken, refreshToken, expiresAt } = exchange;
   const tokenFields = {
     googleHealthUserId: googleUserId,
-    googleHealthAccessToken: accessToken,
-    googleHealthRefreshToken: refreshToken,
+    googleHealthAccessToken: encryptSecret(accessToken),
+    googleHealthRefreshToken: encryptSecret(refreshToken),
     googleHealthTokenExpiresAt: expiresAt,
   };
 

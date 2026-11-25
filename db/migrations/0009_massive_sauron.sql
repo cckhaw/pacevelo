@@ -1,0 +1,2 @@
+ALTER TABLE "profiles" ADD COLUMN "device_sync_token_hash" text;--> statement-breakpoint
+ALTER TABLE "profiles" ADD CONSTRAINT "profiles_device_sync_token_hash_unique" UNIQUE("device_sync_token_hash");

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { exchangeStravaCode } from "@/lib/strava/client";
 import { decodeStravaState } from "@/lib/strava/state";
+import { encryptSecret } from "@/lib/token-crypto";
 import { createSession, getSession } from "@/lib/session";
 import { resolveSafeRedirect } from "@/lib/safe-redirect";
 import { checkEmployeeLimit } from "@/lib/company-limits";
@@ -69,8 +70,8 @@ export async function GET(request: NextRequest) {
   const { athlete, access_token, refresh_token, expires_at } = exchange;
   const tokenFields = {
     stravaAthleteId: athlete.id,
-    stravaAccessToken: access_token,
-    stravaRefreshToken: refresh_token,
+    stravaAccessToken: encryptSecret(access_token),
+    stravaRefreshToken: encryptSecret(refresh_token),
     stravaTokenExpiresAt: new Date(expires_at * 1000),
   };
   const fullName = [athlete.firstname, athlete.lastname].filter(Boolean).join(" ") || "PaceVelo Athlete";

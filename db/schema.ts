@@ -81,7 +81,11 @@ export const profiles = pgTable("profiles", {
   // the sideloaded Android companion app report daily step counts without an
   // interactive OAuth flow. Generated on demand from the dashboard (see
   // lib/device-sync.ts), null until then.
+  // Stored AES-GCM encrypted (lib/token-crypto.ts) so the dashboard can still
+  // re-display the QR code; legacy rows may still hold the plaintext token.
   deviceSyncToken: text("device_sync_token").unique(),
+  // SHA-256 of the plaintext token - what bearer requests are looked up by.
+  deviceSyncTokenHash: text("device_sync_token_hash").unique(),
   // Bumped on every password change/reset (and any forced sign-out); baked
   // into each session JWT so older sessions stop validating.
   sessionVersion: integer("session_version").notNull().default(0),

@@ -1,5 +1,6 @@
 "use server";
 
+import { decryptSecret } from "@/lib/token-crypto";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -53,7 +54,7 @@ export async function disconnectGoogleHealth(): Promise<DisconnectGoogleHealthSt
 
   try {
     if (profile.googleHealthAccessToken) {
-      await revokeGoogleHealthToken(profile.googleHealthAccessToken);
+      await revokeGoogleHealthToken(decryptSecret(profile.googleHealthAccessToken));
     }
   } catch (err) {
     // Still unlink locally even if revoking with Google fails (e.g. the
