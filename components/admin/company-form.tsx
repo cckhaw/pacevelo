@@ -48,7 +48,7 @@ export function CompanyForm({
           // eslint-disable-next-line @next/next/no-img-element -- storage URL, not a static asset
           <img src={company.logoUrl} alt="Current logo" className="mb-2 h-12 w-12 rounded-lg object-contain" />
         ) : null}
-        <Input id="logo" name="logo" type="file" accept="image/*" />
+        <Input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp" />
         <p className="text-xs text-muted-foreground">PNG or JPG, up to 2MB.</p>
       </div>
 

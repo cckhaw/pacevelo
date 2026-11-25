@@ -5,6 +5,7 @@ import { eq, ne, and } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { db } from "@/db";
 import { companies, onboardingCodes, profiles } from "@/db/schema";
+import { sniffImage } from "@/lib/image-sniff";
 import { requireAdmin } from "@/lib/auth";
 import { companySchema } from "@/lib/validations";
 import { slugify } from "@/lib/slug";
@@ -51,6 +52,14 @@ export async function saveCompany(
   const hasLogo = logo instanceof File && logo.size > 0;
   if (hasLogo && logo.size > MAX_LOGO_BYTES) {
     return { error: "Logo must be smaller than 2MB" };
+  }
+  // Decide the stored type from the file's actual bytes (PNG/JPEG/WebP only)
+  // rather than the client-supplied name / MIME type, so the public blob
+  // store can't be used to host HTML or SVG.
+  const logoBytes = hasLogo ? new Uint8Array(await logo.arrayBuffer()) : null;
+  const sniffedLogo = logoBytes ? sniffImage(logoBytes) : null;
+  if (hasLogo && !sniffedLogo) {
+    return { error: "Logo must be a PNG, JPEG or WebP image." };
   }
 
   let companyId = profile.companyId;
@@ -106,10 +115,10 @@ export async function saveCompany(
 
   if (hasLogo) {
     try {
-      const extension = logo.name.split(".").pop() || "png";
-      const blob = await put(`company-logos/${companyId}-${Date.now()}.${extension}`, logo, {
+      const blob = await put(`company-logos/${companyId}-${Date.now()}.${sniffedLogo!.extension}`, logoBytes!, {
         access: "public",
-        contentType: logo.type || undefined,
+        contentType: sniffedLogo!.contentType,
+        addRandomSuffix: true,
       });
       await db.update(companies).set({ logoUrl: blob.url }).where(eq(companies.id, companyId));
     } catch (err) {

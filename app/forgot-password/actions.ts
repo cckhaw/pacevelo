@@ -6,6 +6,7 @@ import { profiles } from "@/db/schema";
 import { createPasswordResetToken } from "@/lib/password-reset";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { emailSchema } from "@/lib/validations";
+import { getClientIp, consumeRateLimit, accountKey, safely, RATE_RULES } from "@/lib/rate-limit";
 
 export interface ForgotPasswordState {
   error?: string;
@@ -26,16 +27,25 @@ export async function requestPasswordReset(
     return { error: "Password reset is not configured on this server." };
   }
 
+  // Over-limit requests get the same generic success as everything else, so
+  // the limiter doesn't leak anything - they just don't send an email.
+  const allowed = await safely(async () => {
+    const ip = await consumeRateLimit(`forgot:ip:${await getClientIp()}`, RATE_RULES.forgotIp);
+    const account = await consumeRateLimit(accountKey("forgot:email", parsed.data), RATE_RULES.forgotEmail);
+    return ip.ok && account.ok;
+  }, true);
+  if (!allowed) return { success: true };
+
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.email, parsed.data),
-    columns: { id: true },
+    columns: { id: true, sessionVersion: true },
   });
 
   // Always report success, whether or not an account exists, so this can't
   // be used to enumerate registered emails.
   if (profile) {
     try {
-      const token = await createPasswordResetToken(profile.id);
+      const token = await createPasswordResetToken(profile.id, profile.sessionVersion);
       const resetUrl = new URL(`/reset-password?token=${token}`, appUrl).toString();
       await sendPasswordResetEmail(parsed.data, resetUrl);
     } catch (err) {

@@ -9,6 +9,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { createEmailVerification, verifyEmailOtp } from "@/lib/otp";
 import { checkEmployeeLimit } from "@/lib/company-limits";
 import { createSession } from "@/lib/session";
+import { getClientIp, consumeRateLimit, accountKey, safely, tooManyMessage, RATE_RULES } from "@/lib/rate-limit";
 import { emailSchema, loginPasswordSchema, passwordSchema, passwordsMatch } from "@/lib/validations";
 
 export interface RequestOtpResult {
@@ -44,6 +45,22 @@ export async function requestChallengeOtp(challengeId: string, rawEmail: string)
     if (domain !== challenge.emailDomain) {
       return { error: `Use your @${challenge.emailDomain} work email to join this challenge.` };
     }
+  }
+
+  // Cap code requests per email and per IP: stops inbox flooding through our
+  // email provider and, since each new code resets its guess counter,
+  // brute-forcing a victim's code by requesting fresh ones.
+  const open = { ok: true, retryAfterSeconds: 0 };
+  const emailLimit = await safely(
+    () => consumeRateLimit(accountKey("otp:request:email", email), RATE_RULES.otpRequestEmail),
+    open,
+  );
+  const ipLimit = await safely(
+    async () => consumeRateLimit(`otp:request:ip:${await getClientIp()}`, RATE_RULES.otpRequestIp),
+    open,
+  );
+  if (!emailLimit.ok || !ipLimit.ok) {
+    return { error: tooManyMessage(Math.max(emailLimit.retryAfterSeconds, ipLimit.retryAfterSeconds)) };
   }
 
   const existing = await db.query.profiles.findFirst({
@@ -98,6 +115,14 @@ export async function verifyChallengeOtpAndJoin(
   const loaded = await loadJoinableChallenge(challengeId);
   if ("error" in loaded) return { error: loaded.error };
   const { challenge } = loaded;
+
+  // Attempt budget that spans every code issued to this email - the
+  // per-code counter alone resets whenever a new code is requested.
+  const verifyLimit = await safely(
+    () => consumeRateLimit(accountKey("otp:verify:email", email), RATE_RULES.otpVerifyEmail),
+    { ok: true, retryAfterSeconds: 0 },
+  );
+  if (!verifyLimit.ok) return { error: tooManyMessage(verifyLimit.retryAfterSeconds) };
 
   const otpResult = await verifyEmailOtp(email, challengeId, trimmedCode);
   if (otpResult === "not_found") return { error: "Request a new code and try again." };

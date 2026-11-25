@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { GOOGLE_OAUTH_AUTHORIZE_URL, GOOGLE_HEALTH_SCOPES } from "@/lib/google-health/client";
 import { encodeGoogleHealthState } from "@/lib/google-health/state";
 import { getSession } from "@/lib/session";
+import { sanitizeRedirectPath } from "@/lib/safe-redirect";
 
 /**
  * Step 1 of the Google Health OAuth handshake: redirect the browser to
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const companySlug = searchParams.get("company") ?? undefined;
-  const redirectTo = searchParams.get("redirect_to") ?? undefined;
+  const redirectTo = sanitizeRedirectPath(searchParams.get("redirect_to"));
 
   // If the browser already holds a session (e.g. an existing employee
   // reconnecting, or an HR admin linking their own account), attach the
